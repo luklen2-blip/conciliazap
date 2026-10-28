@@ -62,10 +62,14 @@
             </div>
 
             <!-- Health Status & Quick Action -->
-            <div class="flex items-center space-x-4">
-                <div class="hidden sm:flex items-center space-x-2 text-xs bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
+            <div class="flex items-center space-x-3">
+                <div id="subscriptionBadge" onclick="trocarAba('planos')" class="cursor-pointer flex items-center space-x-2 text-xs bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-slate-500 transition">
+                    <span id="subDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span class="text-slate-200 font-bold" id="subBadgeText">Assinatura Ativa (Carregando...)</span>
+                </div>
+                <div class="hidden lg:flex items-center space-x-2 text-xs bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span class="text-slate-300 font-medium" id="healthBadge">Online (Carregando...)</span>
+                    <span class="text-slate-300 font-medium" id="healthBadge">Online</span>
                 </div>
                 <button onclick="trocarAba('simulador')" class="bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow transition flex items-center space-x-1.5">
                     <i class="fa-brands fa-whatsapp text-sm"></i>
@@ -112,6 +116,29 @@
 
     <!-- Main Content Container -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+        <!-- Banner de Assinatura Expirada / Alerta de Bloqueio 30 Dias -->
+        <div id="bannerAssinaturaExpirada" class="hidden mb-6 p-4 bg-red-50 border-2 border-red-500 rounded-2xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-3.5">
+                <div class="w-12 h-12 rounded-xl bg-red-600 text-white flex items-center justify-center text-2xl shadow">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-red-700 bg-red-100 px-2 py-0.5 rounded">Acesso Temporariamente Suspenso</span>
+                        <span class="text-xs font-bold text-red-900" id="bannerExpiraData">Período de 30 dias encerrado</span>
+                    </div>
+                    <h4 class="font-bold text-slate-900 text-sm mt-0.5">Assinatura Mensal Expirada — Sistema Bloqueado</h4>
+                    <p class="text-xs text-slate-600">O robô do WhatsApp, as reservas e a moderação do condomínio foram pausados até a renovação mensal.</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <a href="https://pay.kiwify.com.br/mByEbbl" target="_blank" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-xs shadow-md transition flex items-center space-x-2 whitespace-nowrap">
+                    <span>🥝 Renovar na Kiwify (R$ 199/mês)</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                </a>
+            </div>
+        </div>
 
         <!-- Stat Cards -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -432,6 +459,24 @@
                     <i class="fa-solid fa-gear"></i>
                     <span>Alterar Minha Chave PIX</span>
                 </button>
+            </div>
+
+            <!-- Card de Validade da Assinatura (Ciclo de 30 Dias) -->
+            <div id="cardCiclo30Dias" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center space-x-3.5">
+                    <div id="iconCicloStatus" class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl shadow-sm">
+                        <i class="fa-solid fa-calendar-days"></i>
+                    </div>
+                    <div>
+                        <span id="badgeCicloStatus" class="text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Ciclo Mensal: 30 Dias Corridos</span>
+                        <h4 class="font-bold text-slate-900 text-sm mt-0.5" id="textoCicloDias">Carregando período de vigência...</h4>
+                        <p class="text-[11px] text-slate-500">O sistema é liberado mediante pagamento e opera por 30 dias corridos. Vencendo os 30 dias sem renovação, o acesso é automaticamente bloqueado.</p>
+                    </div>
+                </div>
+                <a href="https://pay.kiwify.com.br/mByEbbl" target="_blank" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-xs shadow transition flex items-center space-x-2 whitespace-nowrap">
+                    <span>🥝 Pagar / Renovar na Kiwify</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                </a>
             </div>
 
             <!-- Grid de Planos -->

@@ -4,7 +4,7 @@ import sys
 import time
 import re
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Body, Request, Query
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
@@ -93,6 +93,11 @@ class PixRequest(BaseModel):
 
 class PixConfirmRequest(BaseModel):
     txid: str
+
+class AssinaturaRenovacao(BaseModel):
+    condominio_id: Optional[int] = 1
+    plano: Optional[str] = "Condomínio Pro"
+    dias: Optional[int] = 30
 
 # --- INICIALIZAÇÃO E CONEXÃO COM O BANCO ---
 def get_db():
@@ -217,15 +222,22 @@ def inicializar_banco():
     migrar_coluna("ocorrencias", "condominio_id INTEGER DEFAULT 1")
     migrar_coluna("reservas", "condominio_id INTEGER DEFAULT 1")
     migrar_coluna("achados_perdidos", "condominio_id INTEGER DEFAULT 1")
+    migrar_coluna("condominios", "plano_expira_em DATETIME")
+    migrar_coluna("condominios", "status_assinatura TEXT DEFAULT 'ativa'")
     
     # Condomínios de demonstração (Multiempresa)
     cursor.execute("SELECT COUNT(*) FROM condominios")
+    agora = datetime.now()
+    expira_padrao = (agora + timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
     if cursor.fetchone()[0] == 0:
         cursor.execute("""
-        INSERT INTO condominios (id, nome, slug, cnpj, plano_ativo)
-        VALUES (1, 'Condomínio Residencial Jardins', 'jardins', '12.345.678/0001-90', 'pro'),
-               (2, 'Condomínio Solar das Palmeiras', 'palmeiras', '98.765.432/0001-10', 'starter')
-        """)
+        INSERT INTO condominios (id, nome, slug, cnpj, plano_ativo, plano_expira_em, status_assinatura)
+        VALUES (1, 'Condomínio Residencial Jardins', 'jardins', '12.345.678/0001-90', 'pro', ?, 'ativa'),
+               (2, 'Condomínio Solar das Palmeiras', 'palmeiras', '98.765.432/0001-10', 'starter', ?, 'ativa')
+        """, (expira_padrao, expira_padrao))
+    else:
+        # Garante inicialização de 30 dias para os existentes sem data
+        cursor.execute("UPDATE condominios SET plano_expira_em = ?, status_assinatura = 'ativa' WHERE plano_expira_em IS NULL", (expira_padrao,))
     
     # Moradores de demonstração Condomínio 1
     moradores_iniciais = [
@@ -372,6 +384,121 @@ def registrar_ocorrencia(morador_id: int, descricao: str, apartamento_alvo: str 
     conn.close()
     return ocorrencia_id
 
+def verificar_status_assinatura(condominio_id: int = 1) -> dict:
+    """
+    Verifica se a assinatura mensal do condomínio está ativa (ciclo de 30 dias corridos).
+    Se passar dos 30 dias sem pagamento, o sistema é bloqueado automaticamente.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM condominios WHERE id = ?", (condominio_id,))
+    condo = cursor.fetchone()
+    
+    # Recupera o link da Kiwify configurado
+    cursor.execute("SELECT valor FROM configuracoes WHERE chave = 'link_kiwify'")
+    cfg_link = cursor.fetchone()
+    link_kiwify = (cfg_link["valor"] if cfg_link else None) or "https://pay.kiwify.com.br/mByEbbl"
+    conn.close()
+    
+    if not condo:
+        return {
+            "condominio_id": condominio_id,
+            "ativo": False,
+            "status": "inexistente",
+            "motivo": "Condomínio não encontrado",
+            "dias_restantes": 0,
+            "plano_expira_em": None,
+            "link_kiwify": link_kiwify
+        }
+        
+    plano_expira_em = condo["plano_expira_em"] if "plano_expira_em" in condo.keys() else None
+    plano_nome = condo["plano_ativo"] if "plano_ativo" in condo.keys() else "pro"
+    
+    if not plano_expira_em:
+        return {
+            "condominio_id": condo["id"],
+            "nome": condo["nome"],
+            "plano_ativo": plano_nome,
+            "ativo": False,
+            "status": "pendente_pagamento",
+            "motivo": "Assinatura mensal não iniciada. Pagamento pendente.",
+            "dias_restantes": 0,
+            "plano_expira_em": None,
+            "link_kiwify": link_kiwify
+        }
+        
+    try:
+        data_str = str(plano_expira_em).split(".")[0].replace("T", " ")
+        dt_expira = datetime.strptime(data_str, "%Y-%m-%d %H:%M:%S")
+        agora = datetime.now()
+        
+        if agora <= dt_expira:
+            dias_restantes = (dt_expira - agora).days + 1
+            return {
+                "condominio_id": condo["id"],
+                "nome": condo["nome"],
+                "plano_ativo": plano_nome,
+                "ativo": True,
+                "status": "ativa",
+                "dias_restantes": dias_restantes,
+                "plano_expira_em": dt_expira.strftime("%Y-%m-%d %H:%M:%S"),
+                "plano_expira_formatado": dt_expira.strftime("%d/%m/%Y"),
+                "link_kiwify": link_kiwify
+            }
+        else:
+            return {
+                "condominio_id": condo["id"],
+                "nome": condo["nome"],
+                "plano_ativo": plano_nome,
+                "ativo": False,
+                "status": "expirada",
+                "motivo": "Período de 30 dias corridos encerrado. Sistema aguardando renovação mensal.",
+                "dias_restantes": 0,
+                "plano_expira_em": dt_expira.strftime("%Y-%m-%d %H:%M:%S"),
+                "plano_expira_formatado": dt_expira.strftime("%d/%m/%Y"),
+                "link_kiwify": link_kiwify
+            }
+    except Exception as e:
+        return {
+            "condominio_id": condo["id"],
+            "nome": condo["nome"],
+            "plano_ativo": plano_nome,
+            "ativo": False,
+            "status": "erro_data",
+            "motivo": str(e),
+            "dias_restantes": 0,
+            "plano_expira_em": str(plano_expira_em),
+            "link_kiwify": link_kiwify
+        }
+
+def ativar_assinatura_30_dias(condominio_id: int = 1, plano_nome: str = "Condomínio Pro", dias: int = 30, conn_externa = None) -> str:
+    """
+    Ativa ou estende a assinatura do condomínio por 30 dias corridos a partir do pagamento.
+    """
+    deve_fechar = False
+    if conn_externa is not None:
+        conn = conn_externa
+    else:
+        conn = get_db()
+        deve_fechar = True
+        
+    cursor = conn.cursor()
+    
+    agora = datetime.now()
+    nova_expiracao = agora + timedelta(days=dias)
+    str_expira = nova_expiracao.strftime("%Y-%m-%d %H:%M:%S")
+    
+    cursor.execute("""
+    UPDATE condominios 
+    SET plano_ativo = ?, plano_expira_em = ?, status_assinatura = 'ativa'
+    WHERE id = ?
+    """, (plano_nome, str_expira, condominio_id))
+    
+    conn.commit()
+    if deve_fechar:
+        conn.close()
+    return str_expira
+
 # --- 1. HEALTH CHECK MONITORING 24/7 (REGRA GLOBAL MANDATÓRIA) ---
 @app.get("/api/health")
 async def health_check():
@@ -416,6 +543,22 @@ async def processar_mensagem_whatsapp(request: Request):
     ap = morador["apartamento"]
     bloco = morador["bloco"]
     condo_id = morador["condominio_id"] if "condominio_id" in morador.keys() else 1
+    
+    # Validação da Assinatura Mensal de 30 Dias Corridos do Condomínio
+    status_sub = verificar_status_assinatura(condo_id)
+    if not status_sub["ativo"]:
+        link_pgto = status_sub.get("link_kiwify") or "https://pay.kiwify.com.br/mByEbbl"
+        dt_venc = status_sub.get("plano_expira_formatado") or "período recente"
+        return {
+            "status": "subscription_expired",
+            "reply": (
+                "⚠️ *ConciliaZap — Assinatura Mensal Expirada*\n\n"
+                f"Olá {nome}! O sistema deste condomínio teve o ciclo de 30 dias corridos encerrado em *{dt_venc}* e as funções automatizadas estão temporariamente suspensas.\n\n"
+                f"Para reativar o ConciliaZap imediatamente por mais 30 dias, a administração deve efetuar o pagamento mensal na Kiwify:\n"
+                f"👉 {link_pgto}\n\n"
+                f"Após a confirmação do pagamento, o robô é reativado automaticamente 24/7."
+            )
+        }
     
     texto = (texto_raw or "").strip()
     texto_lower = texto.lower()
@@ -1047,29 +1190,32 @@ async def webhook_kiwify(request: Request):
     cursor = conn.cursor()
     
     if order_status in ["paid", "approved", "completed", "pago"]:
+        expira_em = ativar_assinatura_30_dias(1, product_name, dias=30, conn_externa=conn)
+        
         cursor.execute("""
         INSERT OR REPLACE INTO cobrancas_pix (txid, condominio_id, plano, valor, status, pix_copia_e_cola, qr_code_url, pago_em)
         VALUES (?, 1, ?, ?, 'PAGO', 'PAGAMENTO_VIA_KIWIFY', 'KIWIFY_CHECKOUT', ?)
         """, (order_id, product_name, charge_amount, agora))
-        
-        cursor.execute("UPDATE condominios SET plano_ativo = ? WHERE id = 1", (product_name,))
         conn.commit()
         conn.close()
         
         return {
             "status": "success",
-            "mensagem": f"Pagamento Kiwify processado com sucesso! Plano {product_name} ativado para {customer_name}.",
+            "mensagem": f"Pagamento Kiwify processado com sucesso! Plano {product_name} ativado por 30 dias corridos para {customer_name}.",
             "order_id": order_id,
-            "order_status": order_status
+            "order_status": order_status,
+            "plano_expira_em": expira_em,
+            "dias_validade": 30
         }
     elif order_status in ["refunded", "reembolsado", "chargeback"]:
         cursor.execute("UPDATE cobrancas_pix SET status = 'REEMBOLSADO' WHERE txid = ?", (order_id,))
-        cursor.execute("UPDATE condominios SET plano_ativo = 'starter' WHERE id = 1")
+        ontem = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("UPDATE condominios SET plano_ativo = 'starter', status_assinatura = 'bloqueada', plano_expira_em = ? WHERE id = 1", (ontem,))
         conn.commit()
         conn.close()
         return {
             "status": "refunded",
-            "mensagem": "Reembolso Kiwify registrado.",
+            "mensagem": "Reembolso Kiwify registrado. Condomínio bloqueado.",
             "order_id": order_id
         }
     else:
@@ -1084,7 +1230,7 @@ async def webhook_kiwify(request: Request):
 async def confirmar_pagamento_pix(req: PixConfirmRequest):
     """
     Confirmação do pagamento PIX com garantia de IDEMPOTÊNCIA (sem duplicidade).
-    Ativa o plano contratado no condomínio correspondente.
+    Ativa o plano contratado no condomínio por 30 dias corridos.
     """
     conn = get_db()
     cursor = conn.cursor()
@@ -1109,16 +1255,55 @@ async def confirmar_pagamento_pix(req: PixConfirmRequest):
     cursor.execute("UPDATE cobrancas_pix SET status = 'PAGO', pago_em = ? WHERE txid = ?", (agora, req.txid))
     
     condo_id = cobranca["condominio_id"] or 1
-    cursor.execute("UPDATE condominios SET plano_ativo = ? WHERE id = ?", (cobranca["plano"], condo_id))
+    expira_em = ativar_assinatura_30_dias(condo_id, cobranca["plano"], dias=30, conn_externa=conn)
     conn.commit()
     conn.close()
     
     return {
         "status": "confirmed",
-        "mensagem": "Pagamento confirmado com sucesso! Plano liberado para o condomínio.",
+        "mensagem": "Pagamento confirmado com sucesso! Plano liberado para o condomínio por 30 dias corridos.",
         "txid": req.txid,
         "plano": cobranca["plano"],
-        "pago_em": agora
+        "pago_em": agora,
+        "plano_expira_em": expira_em
+    }
+
+# --- 9.1 GESTÃO DO PAYWALL E ASSINATURA 30 DIAS ---
+@app.get("/api/assinatura/status")
+async def rota_status_assinatura(condominio_id: Optional[int] = 1):
+    """
+    Retorna o status da assinatura de 30 dias corridos, dias restantes e data de expiração.
+    """
+    return verificar_status_assinatura(condominio_id or 1)
+
+@app.post("/api/assinatura/renovar")
+async def rota_renovar_assinatura(req: AssinaturaRenovacao):
+    """
+    Renova a assinatura do condomínio por 30 dias corridos a partir do pagamento.
+    """
+    expira = ativar_assinatura_30_dias(req.condominio_id or 1, req.plano or "Condomínio Pro", req.dias or 30)
+    return {
+        "status": "success",
+        "mensagem": f"Assinatura do condomínio ativada por {req.dias or 30} dias corridos!",
+        "plano_expira_em": expira
+    }
+
+@app.post("/api/assinatura/simular-expirado")
+async def rota_simular_expirado(body: Optional[Dict[str, Any]] = Body(None)):
+    """
+    Rota de apoio a testes: expira a assinatura para validar o bloqueio total do condomínio.
+    """
+    cid = (body.get("condominio_id") if body else None) or 1
+    conn = get_db()
+    cursor = conn.cursor()
+    ontem = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("UPDATE condominios SET plano_expira_em = ?, status_assinatura = 'expirada' WHERE id = ?", (ontem, cid))
+    conn.commit()
+    conn.close()
+    return {
+        "status": "expired_simulated",
+        "mensagem": "Condomínio colocado em estado EXPIRADO para teste do paywall.",
+        "plano_expira_em": ontem
     }
 
 @app.get("/api/pix/status/{txid}")

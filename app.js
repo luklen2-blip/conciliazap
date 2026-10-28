@@ -8,6 +8,9 @@ document.addEventListener("DOMContentLoaded", () => {
     verificarSaude();
     setInterval(verificarSaude, 15000); // Heartbeat 15s
     
+    carregarStatusAssinatura();
+    setInterval(carregarStatusAssinatura, 20000); // Checagem de assinatura 20s
+    
     carregarOcorrencias();
     carregarMoradores();
     carregarReservas();
@@ -62,6 +65,53 @@ async function verificarSaude() {
     } catch (e) {
         const badge = document.getElementById("healthBadge");
         if (badge) badge.innerText = "Reconectando...";
+    }
+}
+
+// --- GESTÃO DE ASSINATURA 30 DIAS CORRIDOS (PAYWALL) ---
+async function carregarStatusAssinatura() {
+    try {
+        const res = await fetch("/api/assinatura/status");
+        const sub = await res.json();
+        
+        const badgeText = document.getElementById("subBadgeText");
+        const dot = document.getElementById("subDot");
+        const banner = document.getElementById("bannerAssinaturaExpirada");
+        const bannerData = document.getElementById("bannerExpiraData");
+        const textoCiclo = document.getElementById("textoCicloDias");
+        const iconCiclo = document.getElementById("iconCicloStatus");
+        const badgeCiclo = document.getElementById("badgeCicloStatus");
+
+        if (sub.ativo) {
+            if (badgeText) badgeText.innerText = `Assinatura Ativa (${sub.dias_restantes}d)`;
+            if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+            if (banner) banner.classList.add("hidden");
+            if (textoCiclo) {
+                textoCiclo.innerHTML = `Plano <strong>${sub.plano_ativo}</strong> ativo até <strong>${sub.plano_expira_formatado}</strong> (Restam ${sub.dias_restantes} dias corridos)`;
+            }
+            if (iconCiclo) iconCiclo.className = "w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl shadow-sm";
+            if (badgeCiclo) {
+                badgeCiclo.className = "text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200";
+                badgeCiclo.innerText = "Ciclo Ativo: 30 Dias Corridos";
+            }
+        } else {
+            if (badgeText) badgeText.innerText = "Bloqueado (Assinatura Vencida)";
+            if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-red-500 animate-ping";
+            if (banner) banner.classList.remove("hidden");
+            if (bannerData) {
+                bannerData.innerText = sub.plano_expira_formatado ? `Venceu em ${sub.plano_expira_formatado}` : "Aguardando pagamento mensal";
+            }
+            if (textoCiclo) {
+                textoCiclo.innerHTML = `<span class="text-red-600 font-extrabold">Assinatura Expirada / Bloqueada</span> • Venceu em ${sub.plano_expira_formatado || 'período recente'}`;
+            }
+            if (iconCiclo) iconCiclo.className = "w-11 h-11 rounded-xl bg-red-100 text-red-700 flex items-center justify-center text-xl shadow-sm";
+            if (badgeCiclo) {
+                badgeCiclo.className = "text-[10px] font-black uppercase tracking-wider text-red-800 bg-red-50 px-2 py-0.5 rounded border border-red-200";
+                badgeCiclo.innerText = "Acesso Bloqueado: 30 Dias Vencidos";
+            }
+        }
+    } catch (e) {
+        console.error("Erro ao verificar status da assinatura:", e);
     }
 }
 

@@ -179,6 +179,45 @@ class TestConciliaZapCompleto(unittest.TestCase):
         self.assertIn("Condomínio Pro", res.json()["mensagem"])
         print(" [PASS] 10. Webhook Kiwify (Postback de Venda Aprovada) validado com sucesso!")
 
+    def test_11_bloqueio_30_dias_sem_pagamento(self):
+        """Valida a regra de liberação por 30 dias corridos mediante pagamento e bloqueio automático."""
+        # 1. Verifica status inicial ativo
+        res_status = client.get("/api/assinatura/status?condominio_id=1")
+        self.assertEqual(res_status.status_code, 200)
+        data_status = res_status.json()
+        self.assertTrue(data_status["ativo"])
+        self.assertGreater(data_status["dias_restantes"], 0)
+        self.assertIn("pay.kiwify.com.br/mByEbbl", data_status["link_kiwify"])
+
+        # 2. Simula expiração dos 30 dias (passando os 30 dias sem pagamento)
+        res_expira = client.post("/api/assinatura/simular-expirado", json={"condominio_id": 1})
+        self.assertEqual(res_expira.status_code, 200)
+
+        # 3. Confere se o sistema bloqueia no WhatsApp quando expirado
+        res_zap_bloqueado = client.post("/api/simulador/enviar", json={
+            "phone": "5511999990302", # Carlos Mendes
+            "text": "Barulho no 402"
+        })
+        self.assertEqual(res_zap_bloqueado.status_code, 200)
+        self.assertEqual(res_zap_bloqueado.json()["status"], "subscription_expired")
+        self.assertIn("Assinatura Mensal Expirada", res_zap_bloqueado.json()["reply"])
+        self.assertIn("pay.kiwify.com.br/mByEbbl", res_zap_bloqueado.json()["reply"])
+
+        # 4. Pagou -> Sistema é liberado por 30 dias corridos imediatamente
+        res_renova = client.post("/api/assinatura/renovar", json={
+            "condominio_id": 1,
+            "plano": "pro",
+            "dias": 30
+        })
+        self.assertEqual(res_renova.status_code, 200)
+        
+        # 5. Confere se voltou a operar normalmente
+        res_status_pos = client.get("/api/assinatura/status?condominio_id=1")
+        self.assertTrue(res_status_pos.json()["ativo"])
+        self.assertEqual(res_status_pos.json()["dias_restantes"], 30)
+        print(" [PASS] 11. Paywall e Ciclo Mensal (Liberado por 30 dias com pagamento / Bloqueio sem pagamento) validado com sucesso!")
+
+
 
 if __name__ == "__main__":
     print("\n" + "="*70)
