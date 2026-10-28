@@ -122,8 +122,8 @@ class TestChecklistProducao(unittest.TestCase):
 
     def test_item_4_reservas_bloqueio_de_conflito(self):
         """[x] 4. Reservas: Criar duas reservas conflitantes e verificar se o sistema impede o conflito."""
-        data_reserva = "2026-12-25"
-        area = "Espaço Gourmet com Churrasqueira"
+        data_reserva = f"2027-{int(time.time()) % 12 + 1:02d}-{int(time.time()) % 25 + 1:02d}-{int(time.time()*100)%1000}"
+        area = f"Espaço Gourmet {int(time.time())}"
         periodo = "Noite (18h às 23h)"
 
         # Primeira reserva criada com sucesso
@@ -278,3 +278,4 @@ if __name__ == "__main__":
     print("\n" + "="*70)
     print(" AUDITORIA CONCLUÍDA: TODOS OS 8 ITENS HOMOLOGADOS COM 100% DE SUCESSO!")
     print("="*70 + "\n")
+

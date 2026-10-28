@@ -964,21 +964,28 @@ async def listar_planos():
 async def gerar_pix_cobranca(req: PixRequest):
     """
     Gera o código Copia-e-Cola PIX oficial (EMV Bacen) e URL de QR Code dinâmico,
-    registrando a cobrança no banco com status PENDENTE para controle financeiro.
+    utilizando a chave configurada por Luciano e registrando a cobrança no banco com status PENDENTE.
     """
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT chave, valor FROM configuracoes WHERE chave IN ('chave_pix', 'nome_recebedor', 'cidade_recebedor')")
+    configs = {r["chave"]: r["valor"] for r in cursor.fetchall()}
+    
+    chave_final = configs.get("chave_pix") or req.chave_pix or "luciano@conciliazap.com.br"
+    nome_final = configs.get("nome_recebedor") or req.nome_recebedor or "Luciano"
+    cidade_final = configs.get("cidade_recebedor") or req.cidade or "SAO PAULO"
+    
     txid = f"CONCILIA{int(time.time())}{os.urandom(2).hex().upper()}"
     payload_emv = pix.gerar_pix_copia_e_cola(
-        chave_pix=req.chave_pix,
-        nome_recebedor=req.nome_recebedor,
-        cidade=req.cidade,
+        chave_pix=chave_final,
+        nome_recebedor=nome_final,
+        cidade=cidade_final,
         valor=req.valor,
         txid=txid[:25]
     )
     qr_code_url = pix.gerar_url_qr_code(payload_emv)
     condo_id = req.condominio_id or 1
     
-    conn = get_db()
-    cursor = conn.cursor()
     cursor.execute("""
     INSERT INTO cobrancas_pix (txid, condominio_id, plano, valor, status, pix_copia_e_cola, qr_code_url)
     VALUES (?, ?, ?, ?, 'PENDENTE', ?, ?)
@@ -993,8 +1000,8 @@ async def gerar_pix_cobranca(req: PixRequest):
         "valor": req.valor,
         "pix_copia_e_cola": payload_emv,
         "qr_code_url": qr_code_url,
-        "chave_pix": req.chave_pix,
-        "nome_recebedor": req.nome_recebedor
+        "chave_pix": chave_final,
+        "nome_recebedor": nome_final
     }
 
 @app.post("/api/pix/confirmar")

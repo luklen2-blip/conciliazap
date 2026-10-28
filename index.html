@@ -103,6 +103,10 @@
                 <i class="fa-solid fa-sliders"></i>
                 <span>Configurações</span>
             </button>
+            <button onclick="trocarAba('guia')" id="tab-btn-guia" class="tab-btn flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+                <i class="fa-solid fa-book-open text-blue-600"></i>
+                <span>Guia Passo a Passo</span>
+            </button>
         </div>
     </nav>
 
@@ -412,6 +416,24 @@
                 </p>
             </div>
 
+            <!-- Card da Conta de Recebimento PIX (Luciano) -->
+            <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+                <div class="flex items-center space-x-3.5">
+                    <div class="w-11 h-11 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-xl shadow-sm">
+                        <i class="fa-solid fa-hand-holding-dollar"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">Conta PIX de Recebimento Ativa</span>
+                        <h4 class="font-bold text-slate-900 text-sm mt-0.5" id="infoPixDisplay">Carregando dados da conta...</h4>
+                        <p class="text-[11px] text-slate-500">Todos os pagamentos de assinaturas caem diretamente nesta conta.</p>
+                    </div>
+                </div>
+                <button onclick="trocarAba('configuracoes')" class="text-xs font-bold text-emerald-800 bg-white border border-emerald-300 px-4 py-2.5 rounded-xl hover:bg-emerald-100 transition flex items-center space-x-2 shadow-sm whitespace-nowrap">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Alterar Minha Chave PIX</span>
+                </button>
+            </div>
+
             <!-- Grid de Planos -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="gridPlanosSaaS">
                 <!-- Preenchido via JS -->
@@ -490,7 +512,7 @@
                                 </div>
                             </div>
 
-                            <!-- Webhook URL informativa -->
+                             <!-- Webhook URL informativa -->
                             <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
                                 <label class="block font-bold text-slate-600 uppercase text-[11px]">URL do Webhook para colar no painel da sua API:</label>
                                 <div class="flex items-center space-x-2">
@@ -501,12 +523,224 @@
                         </div>
                     </div>
 
+                    <!-- Configuração da Conta PIX para Recebimentos do Luciano -->
+                    <div class="pt-4 border-t border-slate-200">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm font-bold">
+                                <i class="fa-solid fa-qrcode"></i>
+                            </span>
+                            <div>
+                                <h3 class="font-bold text-slate-900 text-sm">Sua Conta PIX para Recebimento de Assinaturas (Luciano)</h3>
+                                <p class="text-[11px] text-slate-500">Configure para onde os condomínios pagarão as mensalidades via PIX oficial do Banco Central.</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 pt-2">
+                            <div>
+                                <label class="block font-bold text-slate-700 uppercase mb-1">Sua Chave PIX (CPF, CNPJ, Celular, E-mail ou Chave Aleatória):</label>
+                                <input type="text" id="cfgChavePix" placeholder="Ex: luciano@exemplo.com ou 11999999999" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block font-bold text-slate-700 uppercase mb-1">Nome do Titular da Conta (Recebedor):</label>
+                                    <input type="text" id="cfgNomeRecebedor" placeholder="Ex: Luciano" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-semibold">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-slate-700 uppercase mb-1">Cidade da Conta Bancária:</label>
+                                    <input type="text" id="cfgCidadeRecebedor" placeholder="Ex: SAO PAULO" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 uppercase font-semibold">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="pt-4 flex justify-end">
-                        <button onclick="salvarConfiguracoes()" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold text-xs shadow transition">
-                            Salvar Alterações
+                        <button onclick="salvarConfiguracoes()" class="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold text-xs shadow transition flex items-center space-x-2">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span>Salvar Todas as Alterações</span>
                         </button>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- =================== ABA 7: GUIA PASSO A PASSO (COMO USAR) =================== -->
+        <section id="aba-guia" class="hidden space-y-6">
+            <div class="text-center max-w-2xl mx-auto space-y-2 mb-6">
+                <span class="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">Manual Operacional 24/7</span>
+                <h2 class="text-2xl font-black text-slate-900">Como Usar o ConciliaZap no Dia a Dia</h2>
+                <p class="text-xs text-slate-500">
+                    Guia simples e prático para o morador, para o síndico e para você monetizar o condomínio com paz social e impessoalidade.
+                </p>
+            </div>
+
+            <!-- Grid de Passos -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                <!-- Passo 1 -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between hover:border-brand-500/50 transition">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 font-black text-sm flex items-center justify-center">01</span>
+                            <span class="text-[10px] font-bold uppercase text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Morador no WhatsApp</span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-sm flex items-center space-x-2">
+                            <i class="fa-brands fa-whatsapp text-emerald-500"></i>
+                            <span>Registro Autônomo de Ocorrência</span>
+                        </h3>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            O condômino envia uma mensagem de texto simples no WhatsApp (ex: <em>"Tem muito barulho de som alto no 402 bloco A"</em>).
+                        </p>
+                        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-600 space-y-1">
+                            <p class="font-bold text-slate-700">🔒 Sigilo e Impessoalidade Garantidos:</p>
+                            <p>O robô responde acolhendo a queixa, <strong>mantendo a identidade do denunciante em sigilo absoluto</strong> e solicitando áudio ou vídeo como evidência.</p>
+                        </div>
+                    </div>
+                    <button onclick="trocarAba('simulador')" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs shadow transition flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-play"></i>
+                        <span>Testar no Simulador de Chat</span>
+                    </button>
+                </div>
+
+                <!-- Passo 2 -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between hover:border-brand-500/50 transition">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 font-black text-sm flex items-center justify-center">02</span>
+                            <span class="text-[10px] font-bold uppercase text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Painel do Síndico</span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-sm flex items-center space-x-2">
+                            <i class="fa-solid fa-gavel text-blue-600"></i>
+                            <span>Moderação com 1 Clique</span>
+                        </h3>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            O síndico acessa a aba <strong>Moderação</strong>, vê a fila de queixas pendentes e o histórico automático de reincidências do infrator.
+                        </p>
+                        <ul class="text-[11px] text-slate-600 space-y-1.5 pt-1">
+                            <li class="flex items-center space-x-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <span><strong>Aviso Amigável:</strong> Conscientização inicial.</span>
+                            </li>
+                            <li class="flex items-center space-x-1.5">
+                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                <span><strong>Advertência Formal:</strong> 1ª reincidência oficial.</span>
+                            </li>
+                            <li class="flex items-center space-x-1.5">
+                                <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                                <span><strong>Multa Pecuniária:</strong> Valor em R$ lançado em cota.</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <button onclick="trocarAba('painel')" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs shadow transition flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-list-check"></i>
+                        <span>Acessar Fila de Moderação</span>
+                    </button>
+                </div>
+
+                <!-- Passo 3 -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between hover:border-brand-500/50 transition">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="w-8 h-8 rounded-lg bg-red-100 text-red-700 font-black text-sm flex items-center justify-center">03</span>
+                            <span class="text-[10px] font-bold uppercase text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200">Validade Jurídica</span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-sm flex items-center space-x-2">
+                            <i class="fa-solid fa-file-pdf text-red-600"></i>
+                            <span>Laudo Formal e Auto de Infração</span>
+                        </h3>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Para cada queixa homologada, o síndico clica em <strong>"Laudo Oficial PDF"</strong> para abrir o auto de infração timbrado.
+                        </p>
+                        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-600 space-y-1">
+                            <p class="font-bold text-slate-700">⚖️ Conformidade Legal Brasileira:</p>
+                            <p>Documento estruturado com base nos Arts. 1.336 e 1.337 do Código Civil, pronto para impressão ou envio com o boleto da taxa de condomínio.</p>
+                        </div>
+                    </div>
+                    <div class="p-2 bg-slate-100 rounded-xl text-center text-[11px] text-slate-600 font-medium">
+                        Disponível em cada card de ocorrência
+                    </div>
+                </div>
+
+                <!-- Passo 4 -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between hover:border-brand-500/50 transition">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 font-black text-sm flex items-center justify-center">04</span>
+                            <span class="text-[10px] font-bold uppercase text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">Portaria & Reservas</span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-sm flex items-center space-x-2">
+                            <i class="fa-solid fa-calendar-check text-purple-600"></i>
+                            <span>Reservas sem Conflito de Agenda</span>
+                        </h3>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Moradores podem agendar o Salão de Festas ou Churrasqueira pelo WhatsApp ou painel.
+                        </p>
+                        <div class="p-2.5 bg-purple-50 rounded-xl border border-purple-100 text-[11px] text-purple-900 space-y-1">
+                            <p class="font-bold">🛡️ Prevenção Automática de Conflitos:</p>
+                            <p>O sistema rejeita instantaneamente qualquer tentativa de reserva sobreposta no mesmo espaço, data e período.</p>
+                        </div>
+                    </div>
+                    <button onclick="trocarAba('reservas')" class="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-xs shadow transition flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-umbrella-beach"></i>
+                        <span>Gerenciar Áreas & Achados</span>
+                    </button>
+                </div>
+
+                <!-- Passo 5 -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between hover:border-brand-500/50 transition">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 font-black text-sm flex items-center justify-center">05</span>
+                            <span class="text-[10px] font-bold uppercase text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">Integração WhatsApp</span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-sm flex items-center space-x-2">
+                            <i class="fa-solid fa-plug text-amber-600"></i>
+                            <span>Conectar Evolution API / Z-API</span>
+                        </h3>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Para o robô responder no número oficial de WhatsApp do condomínio:
+                        </p>
+                        <ol class="text-[11px] text-slate-600 list-decimal list-inside space-y-1 pt-1">
+                            <li>Vá na aba <strong>Configurações</strong>.</li>
+                            <li>Clique no botão <strong>Copiar</strong> da URL do Webhook.</li>
+                            <li>Cole essa URL no painel da sua API (Evolution API ou Z-API).</li>
+                            <li>Pronto! Todas as mensagens recebidas acionarão o ConciliaZap 24/7.</li>
+                        </ol>
+                    </div>
+                    <button onclick="trocarAba('configuracoes')" class="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-xs shadow transition flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span>Copiar Link do Webhook</span>
+                    </button>
+                </div>
+
+                <!-- Passo 6 -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between hover:border-brand-500/50 transition">
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="w-8 h-8 rounded-lg bg-brand-100 text-brand-700 font-black text-sm flex items-center justify-center">06</span>
+                            <span class="text-[10px] font-bold uppercase text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">Recebimentos (Luciano)</span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-sm flex items-center space-x-2">
+                            <i class="fa-solid fa-qrcode text-brand-600"></i>
+                            <span>Receber Mensalidades via PIX</span>
+                        </h3>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            Como configurar para que os condomínios paguem diretamente na sua conta bancária:
+                        </p>
+                        <ol class="text-[11px] text-slate-600 list-decimal list-inside space-y-1 pt-1">
+                            <li>Abra a aba <strong>Configurações</strong>.</li>
+                            <li>Preencha a sua <strong>Chave PIX</strong> (CPF, Celular, E-mail ou Chave Aleatória).</li>
+                            <li>Coloque o seu <strong>Nome Completo (Luciano)</strong> e Cidade.</li>
+                            <li>Clique em <strong>Salvar Alterações</strong>.</li>
+                            <li>Todos os planos assinados na aba <strong>Planos SaaS</strong> gerarão QR Code dinâmico do Banco Central apontando para você!</li>
+                        </ol>
+                    </div>
+                    <button onclick="trocarAba('configuracoes')" class="w-full py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold text-xs shadow transition flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-hand-holding-dollar"></i>
+                        <span>Configurar Minha Chave PIX</span>
+                    </button>
+                </div>
+
             </div>
         </section>
 

@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // --- CONTROLE DE ABAS ---
 function trocarAba(nomeAba) {
-    const abas = ["painel", "simulador", "moradores", "reservas", "planos", "configuracoes"];
+    const abas = ["painel", "simulador", "moradores", "reservas", "planos", "configuracoes", "guia"];
     abas.forEach(aba => {
         const elAba = document.getElementById(`aba-${aba}`);
         const elBtn = document.getElementById(`tab-btn-${aba}`);
@@ -669,7 +669,7 @@ function copiarWebhookUrl() {
     exibirToast("URL do Webhook copiada!");
 }
 
-// --- CONFIGURAÇÕES ---
+// --- CONFIGURAÇÕES & CONTA PIX (LUCIANO) ---
 async function carregarConfiguracoes() {
     try {
         const res = await fetch("/api/config");
@@ -683,8 +683,22 @@ async function carregarConfiguracoes() {
         if (cfg.evolution_api_url) document.getElementById("cfgApiUrl").value = cfg.evolution_api_url;
         if (cfg.whatsapp_instancia) document.getElementById("cfgInstancia").value = cfg.whatsapp_instancia;
         if (cfg.evolution_api_key) document.getElementById("cfgApiKey").value = cfg.evolution_api_key;
+        
+        // Dados do PIX de Recebimento do Luciano
+        const chavePix = cfg.chave_pix || "luciano@conciliazap.com.br";
+        const nomeRecebedor = cfg.nome_recebedor || "Luciano";
+        const cidadeRecebedor = cfg.cidade_recebedor || "SAO PAULO";
+
+        if (document.getElementById("cfgChavePix")) document.getElementById("cfgChavePix").value = chavePix;
+        if (document.getElementById("cfgNomeRecebedor")) document.getElementById("cfgNomeRecebedor").value = nomeRecebedor;
+        if (document.getElementById("cfgCidadeRecebedor")) document.getElementById("cfgCidadeRecebedor").value = cidadeRecebedor;
+
+        const infoPix = document.getElementById("infoPixDisplay");
+        if (infoPix) {
+            infoPix.innerHTML = `<strong class="text-emerald-950">${nomeRecebedor}</strong> • Chave: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">${chavePix}</span> (${cidadeRecebedor})`;
+        }
     } catch (e) {
-        console.error(e);
+        console.error("Erro ao carregar configurações:", e);
     }
 }
 
@@ -695,7 +709,10 @@ async function salvarConfiguracoes() {
         sindico_whatsapp: document.getElementById("cfgSindicoWhats").value.trim(),
         evolution_api_url: document.getElementById("cfgApiUrl").value.trim(),
         whatsapp_instancia: document.getElementById("cfgInstancia").value.trim(),
-        evolution_api_key: document.getElementById("cfgApiKey").value.trim()
+        evolution_api_key: document.getElementById("cfgApiKey").value.trim(),
+        chave_pix: (document.getElementById("cfgChavePix")?.value || "").trim(),
+        nome_recebedor: (document.getElementById("cfgNomeRecebedor")?.value || "Luciano").trim(),
+        cidade_recebedor: (document.getElementById("cfgCidadeRecebedor")?.value || "SAO PAULO").trim()
     };
 
     try {
@@ -705,9 +722,15 @@ async function salvarConfiguracoes() {
             body: JSON.stringify(payload)
         });
         document.getElementById("headerCondoName").innerText = payload.nome_condominio;
-        exibirToast("Configurações atualizadas!");
+        
+        const infoPix = document.getElementById("infoPixDisplay");
+        if (infoPix) {
+            infoPix.innerHTML = `<strong class="text-emerald-950">${payload.nome_recebedor}</strong> • Chave: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">${payload.chave_pix}</span> (${payload.cidade_recebedor})`;
+        }
+
+        exibirToast("✅ Configurações e Conta PIX salvas com sucesso!");
     } catch (e) {
-        alert("Erro ao salvar.");
+        alert("Erro ao salvar configurações.");
     }
 }
 
