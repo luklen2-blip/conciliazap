@@ -1,0 +1,934 @@
+import sqlite3
+import os
+import sys
+import time
+import re
+from datetime import datetime, timezone
+from typing import Optional, List, Dict, Any
+from fastapi import FastAPI, HTTPException, Body, Request, Query
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+import pix
+
+# Garante suporte a UTF-8 em terminais Windows (cp1252)
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
+
+START_TIME = time.time()
+DB_NAME = "condominio.db"
+
+app = FastAPI(
+    title="ConciliaZap - Gestão de Conflitos e Condomínio 24/7",
+    description="Sistema autônomo de mediação de conflitos, ocorrências e gestão condominial via WhatsApp com moderação do síndico.",
+    version="2.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --- MODELOS DE ENTRADA Pydantic ---
+class WhatsAppMessage(BaseModel):
+    id: Optional[str] = "msg-auto"
+    sender_phone: str  # Ex: "5511999990302" ou "11999990302"
+    text: str          # Mensagem enviada pelo morador
+
+class MoradorCreate(BaseModel):
+    nome: str
+    telefone: str
+    apartamento: str
+    bloco: str
+    tipo: Optional[str] = "morador"
+
+class ReservaCreate(BaseModel):
+    morador_id: int
+    area: str
+    data_reserva: str
+    periodo: str
+
+class AchadoCreate(BaseModel):
+    item: str
+    local_encontrado: str
+
+class OcorrenciaDecisao(BaseModel):
+    status: str  # 'Aprovada' ou 'Rejeitada'
+    motivo: Optional[str] = ""
+    penalidade: Optional[str] = "Aviso Amigável" # 'Aviso Amigável', 'Advertência Formal', 'Multa'
+    valor_multa: Optional[float] = 0.0
+
+class PixRequest(BaseModel):
+    plano_nome: str
+    valor: float
+    chave_pix: Optional[str] = "contato@conciliazap.com.br"
+    nome_recebedor: Optional[str] = "ConciliaZap Solucoes Ltda"
+    cidade: Optional[str] = "SAO PAULO"
+
+# --- INICIALIZAÇÃO E CONEXÃO COM O BANCO ---
+def get_db():
+    conn = sqlite3.connect(DB_NAME, timeout=30.0)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def inicializar_banco():
+    conn = sqlite3.connect(DB_NAME, timeout=30.0)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS moradores (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        telefone TEXT UNIQUE NOT NULL,
+        apartamento TEXT NOT NULL,
+        bloco TEXT NOT NULL,
+        tipo TEXT DEFAULT 'morador',
+        criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""")
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ocorrencias (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        morador_id INTEGER NOT NULL,
+        apartamento_alvo TEXT,
+        bloco_alvo TEXT,
+        categoria TEXT DEFAULT 'Barulho',
+        descricao TEXT NOT NULL,
+        evidencia_url TEXT,
+        status TEXT DEFAULT 'Pendente',
+        decisao_sindico TEXT,
+        notificacao_enviada INTEGER DEFAULT 0,
+        penalidade TEXT DEFAULT 'Nenhuma',
+        valor_multa REAL DEFAULT 0.0,
+        data_hora DATETIME DEFAULT CURRENT_TIMESTAMP,
+        resolvido_em DATETIME,
+        FOREIGN KEY(morador_id) REFERENCES moradores(id)
+    )""")
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS reservas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        morador_id INTEGER NOT NULL,
+        area TEXT NOT NULL,
+        data_reserva TEXT NOT NULL,
+        periodo TEXT NOT NULL,
+        status TEXT DEFAULT 'Confirmada',
+        termo_aceito INTEGER DEFAULT 1,
+        criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(morador_id) REFERENCES moradores(id)
+    )""")
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS achados_perdidos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item TEXT NOT NULL,
+        local_encontrado TEXT NOT NULL,
+        status TEXT DEFAULT 'Disponível',
+        devolvido_para TEXT,
+        data_registro DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""")
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS configuracoes (
+        chave TEXT PRIMARY KEY,
+        valor TEXT
+    )""")
+    
+    # Moradores de demonstração
+    moradores_iniciais = [
+        ("Roberto Oliveira (Síndico)", "5511999990001", "101", "A", "sindico"),
+        ("Carlos Mendes", "5511999990302", "302", "A", "morador"),
+        ("Marcos Souza", "5511999990402", "402", "A", "morador"),
+        ("Juliana Costa", "5511999990205", "205", "B", "morador"),
+        ("Fernanda Lima", "5511999990501", "501", "B", "morador"),
+        ("Eduardo Rocha", "5511999990104", "104", "A", "morador")
+    ]
+    for nome, tel, ap, bloco, tipo in moradores_iniciais:
+        cursor.execute("""
+        INSERT OR IGNORE INTO moradores (nome, telefone, apartamento, bloco, tipo)
+        VALUES (?, ?, ?, ?, ?)
+        """, (nome, tel, ap, bloco, tipo))
+
+    # Ocorrência inicial de exemplo
+    cursor.execute("SELECT COUNT(*) FROM ocorrencias")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("""
+        INSERT INTO ocorrencias (morador_id, apartamento_alvo, bloco_alvo, categoria, descricao, status, penalidade)
+        VALUES (2, '402', 'A', 'Barulho', 'Barulho de obra e som excessivo no 402 após as 22h com batidas fortes.', 'Pendente', 'Nenhuma')
+        """)
+
+    # Reserva inicial
+    cursor.execute("SELECT COUNT(*) FROM reservas")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("""
+        INSERT INTO reservas (morador_id, area, data_reserva, periodo, status)
+        VALUES (4, 'Salão de Festas', '2026-11-15', 'Noite (18h às 23h)', 'Confirmada')
+        """)
+
+    # Achados e perdidos
+    cursor.execute("SELECT COUNT(*) FROM achados_perdidos")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("""
+        INSERT INTO achados_perdidos (item, local_encontrado, status)
+        VALUES ('Chaveiro com controle de portão', 'Garagem Subsolo 1 (próximo à vaga 22)', 'Disponível')
+        """)
+
+    # Configurações padrão
+    configs_padrao = [
+        ("nome_condominio", "Condomínio Residencial Jardins"),
+        ("horario_silencio", "22:00 às 08:00"),
+        ("whatsapp_instancia", "ConciliaZap-Bot"),
+        ("evolution_api_url", "https://api.meucondominio.com.br"),
+        ("evolution_api_key", "secret-key-demo-xyz"),
+        ("sindico_whatsapp", "5511999990001")
+    ]
+    for k, v in configs_padrao:
+        cursor.execute("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES (?, ?)", (k, v))
+        
+    conn.commit()
+    conn.close()
+
+inicializar_banco()
+
+# --- FUNÇÕES DE BUSCA E APOIO ---
+def sanitizar_telefone(tel: str) -> str:
+    limpo = re.sub(r"\D", "", tel)
+    if not limpo.startswith("55") and len(limpo) in [10, 11]:
+        limpo = "55" + limpo
+    return limpo
+
+def buscar_morador_por_telefone(telefone: str):
+    tel_limpo = sanitizar_telefone(telefone)
+    conn = get_db()
+    cursor = conn.cursor()
+    # Tenta com 55 e sem 55
+    cursor.execute("SELECT id, nome, telefone, apartamento, bloco, tipo FROM moradores WHERE telefone = ? OR telefone LIKE ?", 
+                   (tel_limpo, f"%{tel_limpo[-8:]}"))
+    morador = cursor.fetchone()
+    conn.close()
+    return morador
+
+def extrair_apartamento_alvo(texto: str):
+    # Procura padrões como "402", "apto 302", "apartamento 101", "bloco b"
+    match_ap = re.search(r"(?:ap(?:to|artamento)?\s*[:#]?\s*|no\s+)?(\d{2,4})", texto, re.IGNORECASE)
+    match_bloco = re.search(r"(?:bloco|bl)\s*[:#]?\s*([a-zA-Z0-9]+)", texto, re.IGNORECASE)
+    
+    ap = match_ap.group(1) if match_ap else None
+    bloco = match_bloco.group(1).upper() if match_bloco else "A"
+    return ap, bloco
+
+def contar_reincidencias(apartamento: str, bloco: str) -> int:
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT COUNT(*) FROM ocorrencias 
+    WHERE apartamento_alvo = ? AND bloco_alvo = ? AND status IN ('Aprovada', 'Notificada')
+    """, (apartamento, bloco))
+    total = cursor.fetchone()[0]
+    conn.close()
+    return total
+
+def registrar_ocorrencia(morador_id: int, descricao: str, apartamento_alvo: str = "A Definir", bloco_alvo: str = "A") -> int:
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+    INSERT INTO ocorrencias (morador_id, apartamento_alvo, bloco_alvo, categoria, descricao, status)
+    VALUES (?, ?, ?, 'Barulho', ?, 'Pendente')
+    """, (morador_id, apartamento_alvo, bloco_alvo, descricao))
+    ocorrencia_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return ocorrencia_id
+
+# --- 1. HEALTH CHECK MONITORING 24/7 (REGRA GLOBAL MANDATÓRIA) ---
+@app.get("/api/health")
+async def health_check():
+    """
+    Endpoint obrigatório de monitoramento para Render / Railway / UptimeRobot.
+    """
+    uptime = int(time.time() - START_TIME)
+    return {
+        "status": "ok",
+        "app": "ConciliaZap - Gestão de Conflitos e Condomínio 24/7",
+        "version": "2.0.0",
+        "uptime_seconds": uptime,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+# --- 2. WEBHOOK WHATSAPP & PROCESSAMENTO AUTÔNOMO ---
+@app.post("/webhook/whatsapp")
+@app.post("/api/webhook/whatsapp")
+async def processar_mensagem_whatsapp(data: WhatsAppMessage):
+    """
+    Processador autônomo de mensagens WhatsApp recebidas da Evolution API / Z-API.
+    Identifica o morador, detecta a intenção (Barulho/Conflito, Reservas, Achados, Regras)
+    e executa o fluxo automatizado sem atrito.
+    """
+    telefone_limpo = sanitizar_telefone(data.sender_phone)
+    morador = buscar_morador_por_telefone(telefone_limpo)
+    
+    if not morador:
+        return {
+            "status": "unauthorized",
+            "reply": "🔒 *ConciliaZap Portaria Digital*\n\nOlá! Não identificamos seu número no cadastro ativo deste condomínio.\n\nPor favor, envie seu nome completo, bloco e apartamento para a administração atualizar seu cadastro oficial."
+        }
+        
+    morador_id = morador["id"]
+    nome = morador["nome"]
+    ap = morador["apartamento"]
+    bloco = morador["bloco"]
+    texto = data.text.strip()
+    texto_lower = texto.lower()
+    
+    # 1. FLUXO DE CONFLITO E BARULHO (MODERAÇÃO SEM ATRITO)
+    palavras_barulho = ["barulho", "ruido", "ruído", "som alto", "furadeira", "festa", "grito", "obra", "som", "gritaria", "latido"]
+    if any(p in texto_lower for p in palavras_barulho):
+        ap_alvo, bloco_alvo = extrair_apartamento_alvo(texto)
+        if not ap_alvo:
+            ap_alvo = "A Definir"
+            
+        ocorrencia_id = registrar_ocorrencia(morador_id, texto, ap_alvo, bloco_alvo)
+        
+        return {
+            "status": "occurrence_created",
+            "ocorrencia_id": ocorrencia_id,
+            "reply": (
+                f"⚖️ *Ocorrência #{ocorrencia_id} Registrada com Sucesso!*\n\n"
+                f"Olá {nome} (Ap {ap}-{bloco}). Identificamos seu registro referente à perturbação no apartamento {ap_alvo} (Bloco {bloco_alvo}).\n\n"
+                f"🛡️ *Garantia de Impessoalidade:*\n"
+                f"Seu nome permanece estritamente sigiloso. O caso foi encaminhado ao Painel de Moderação do Síndico.\n\n"
+                f"📎 *Evidência:* Se tiver áudio ou vídeo do barulho, envie como resposta neste chat para anexarmos ao laudo da administração."
+            )
+        }
+        
+    # 2. FLUXO DE RESERVAS DE ÁREAS COMUNS
+    if any(p in texto_lower for p in ["reserva", "salao", "salão", "churrasqueira", "quadra"]):
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT area, data_reserva, periodo FROM reservas WHERE date(data_reserva) >= date('now') ORDER BY data_reserva ASC LIMIT 3")
+        proximas = cursor.fetchall()
+        conn.close()
+        
+        lista_reservas = "\n".join([f"• {r['area']} em {r['data_reserva']} ({r['periodo']})" for r in proximas]) or "Nenhuma reserva ativa nos próximos dias."
+        
+        return {
+            "status": "reservation_info",
+            "reply": (
+                f"🎉 *Reserva de Áreas Comuns - {nome}*\n\n"
+                f"Áreas disponíveis para locação:\n"
+                f"1. Salão de Festas Climatizado\n"
+                f"2. Espaço Gourmet com Churrasqueira\n"
+                f"3. Quadra Poliesportiva\n\n"
+                f"📅 *Próximos agendamentos confirmados:*\n{lista_reservas}\n\n"
+                f"Para solicitar sua reserva, acesse o painel ou envie: 'Reservar Churrasqueira em DD/MM/AAAA'."
+            )
+        }
+
+    # 3. FLUXO DE ACHADOS E PERDIDOS
+    if any(p in texto_lower for p in ["achado", "perdido", "perdi", "encontrei", "chave", "carteira", "objeto"]):
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, item, local_encontrado, data_registro FROM achados_perdidos WHERE status = 'Disponível' ORDER BY id DESC LIMIT 4")
+        itens = cursor.fetchall()
+        conn.close()
+        
+        lista_itens = "\n".join([f"• Item #{i['id']}: *{i['item']}* (Local: {i['local_encontrado']})" for i in itens]) or "Nenhum item pendente na portaria no momento."
+        
+        return {
+            "status": "lost_found",
+            "reply": (
+                f"📦 *Achados & Perdidos da Portaria*\n\n"
+                f"Itens aguardando retirada pelo proprietário:\n{lista_itens}\n\n"
+                f"Para retirar seu item, compareça à portaria munido de identificação do seu apartamento {ap}-{bloco}."
+            )
+        }
+
+    # 4. REGIMENTO INTERNO E NORMAS
+    if any(p in texto_lower for p in ["regimento", "regra", "regras", "horario", "horário", "silencio", "silêncio"]):
+        return {
+            "status": "rules",
+            "reply": (
+                f"📖 *Regimento Interno e Regras de Convivência*\n\n"
+                f"⏰ *Horário de Silêncio:* Obrigatório das 22h00 às 08h00 todos os dias.\n"
+                f"🔨 *Obras e Reformas:* Permitidas de Seg a Sex das 08h00 às 17h00 (Sábados até as 12h00).\n"
+                f"🐶 *Animais de Estimação:* Devem circular em guias adequadas nas áreas sociais.\n"
+                f"🗑️ *Descarte de Lixo:* Utilizar as lixeiras seletivas no subsolo até as 20h.\n\n"
+                f"Dúvidas adicionais podem ser consultadas diretamente com a administração."
+            )
+        }
+
+    # 5. MENU PRINCIPAL DE AUTOATENDIMENTO (DEFAULT)
+    return {
+        "status": "menu",
+        "reply": (
+            f"🏢 *ConciliaZap - Condomínio Inteligente*\n"
+            f"Olá, *{nome}* (Apto {ap} - Bloco {bloco})!\n\n"
+            f"Como podemos te ajudar hoje?\n\n"
+            f"1️⃣ *Barulho:* Digite 'Barulho no [apto]' para registrar perturbação de forma 100% anônima.\n"
+            f"2️⃣ *Reservas:* Digite 'Reserva' para consultar disponibilidade do salão ou churrasqueira.\n"
+            f"3️⃣ *Achados:* Digite 'Achados' para verificar itens guardados na portaria.\n"
+            f"4️⃣ *Regimento:* Digite 'Regras' para consultar os horários de silêncio e regulamentos."
+        )
+    }
+
+# --- 3. SIMULADOR DE WHATSAPP PARA TESTES NO NAVEGADOR ---
+@app.post("/api/simulador/enviar")
+async def simular_envio_whatsapp(payload: WhatsAppMessage):
+    """
+    Permite testar o fluxo completo de atendimento e moderação direto do navegador
+    sem precisar de celular ou API externa conectada.
+    """
+    resposta = await processar_mensagem_whatsapp(payload)
+    return resposta
+
+# --- 4. GESTÃO DE OCORRÊNCIAS & PAINEL DO SÍNDICO ---
+@app.get("/api/ocorrencias")
+async def listar_ocorrencias(status: Optional[str] = None):
+    conn = get_db()
+    cursor = conn.cursor()
+    query = """
+    SELECT o.*, m.nome as denunciante_nome, m.apartamento as denunciante_ap, m.bloco as denunciante_bloco, m.telefone as denunciante_tel
+    FROM ocorrencias o
+    JOIN moradores m ON o.morador_id = m.id
+    """
+    params = []
+    if status and status != "Todas":
+        query += " WHERE o.status = ?"
+        params.append(status)
+    query += " ORDER BY o.id DESC"
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    lista = []
+    for r in rows:
+        reincidencias = contar_reincidencias(r["apartamento_alvo"], r["bloco_alvo"])
+        item = dict(r)
+        item["reincidencias_infrator"] = reincidencias
+        lista.append(item)
+    return lista
+
+@app.post("/api/ocorrencias/{ocorrencia_id}/moderar")
+async def moderar_ocorrencia(ocorrencia_id: int, decisao: OcorrenciaDecisao):
+    """
+    Ação de 1 clique do Síndico: Homologa o envio de Notificação/Advertência/Multa
+    ou Rejeita/Arquiva a queixa, despersonalizando o conflito.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT o.*, m.nome as denunciante_nome FROM ocorrencias o JOIN moradores m ON o.morador_id = m.id WHERE o.id = ?", (ocorrencia_id,))
+    ocorrencia = cursor.fetchone()
+    if not ocorrencia:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Ocorrência não encontrada.")
+        
+    agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("""
+    UPDATE ocorrencias 
+    SET status = ?, decisao_sindico = ?, penalidade = ?, valor_multa = ?, notificacao_enviada = 1, resolvido_em = ?
+    WHERE id = ?
+    """, (decisao.status, decisao.motivo, decisao.penalidade, decisao.valor_multa, agora, ocorrencia_id))
+    conn.commit()
+    conn.close()
+    
+    # Texto automatizado enviado ao WhatsApp do infrator caso aprovada
+    mensagem_notificacao = ""
+    if decisao.status == "Aprovada":
+        if decisao.penalidade == "Multa":
+            mensagem_notificacao = (
+                f"🚨 *NOTIFICAÇÃO FORMAL DE MULTA CONDOMINIAL*\n"
+                f"Prezado morador da unidade {ocorrencia['apartamento_alvo']} (Bloco {ocorrencia['bloco_alvo']}),\n\n"
+                f"Devido à reincidência em ruídos excessivos fora do horário permitido, conforme Art. 42 do Regimento Interno, "
+                f"foi homologada multa administrativa no valor de R$ {decisao.valor_multa:.2f}.\n\n"
+                f"O boleto e o laudo formal foram anexados à sua cota condominial."
+            )
+        elif decisao.penalidade == "Advertência Formal":
+            mensagem_notificacao = (
+                f"⚠️ *ADVERTÊNCIA CONDOMINIAL ADMINISTRATIVA*\n"
+                f"Prezado morador da unidade {ocorrencia['apartamento_alvo']} (Bloco {ocorrencia['bloco_alvo']}),\n\n"
+                f"Constatamos registro formal de perturbação do sossego ({ocorrencia['descricao']}). "
+                f"Solicitamos a cessação imediata para evitar a aplicação de sanções pecuniárias."
+            )
+        else:
+            mensagem_notificacao = (
+                f"🔔 *Aviso Amigável de Convivência*\n"
+                f"Olá morador do apto {ocorrencia['apartamento_alvo']}! Recebemos um aviso interno da vizinhança sobre sons/ruídos no momento. "
+                f"Contamos com sua colaboração para manter o bem-estar de todos no condomínio. Obrigado!"
+            )
+            
+    return {
+        "status": "success",
+        "ocorrencia_id": ocorrencia_id,
+        "decisao": decisao.status,
+        "penalidade": decisao.penalidade,
+        "mensagem_robô_enviada": mensagem_notificacao
+    }
+
+# --- 5. GERAÇÃO DE LAUDO / ADVERTÊNCIA FORMAL EM FORMATO IMPRESSÃO / PDF ---
+@app.get("/api/ocorrencias/{ocorrencia_id}/laudo-html", response_class=HTMLResponse)
+async def gerar_laudo_formal_html(ocorrencia_id: int):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT o.*, m.nome as denunciante_nome, m.apartamento as denunciante_ap, m.bloco as denunciante_bloco
+    FROM ocorrencias o
+    JOIN moradores m ON o.morador_id = m.id
+    WHERE o.id = ?
+    """, (ocorrencia_id,))
+    oc = cursor.fetchone()
+    conn.close()
+    
+    if not oc:
+        raise HTTPException(status_code=404, detail="Ocorrência não encontrada")
+        
+    html = f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Notificação Formal #{oc['id']} - ConciliaZap</title>
+    <style>
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1e293b; background: #fff; }}
+        .header {{ border-bottom: 2px solid #0284c7; padding-bottom: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; }}
+        .title {{ font-size: 24px; font-weight: bold; color: #0f172a; }}
+        .badge {{ background: #0284c7; color: #fff; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: bold; }}
+        .field-group {{ margin-bottom: 16px; }}
+        .label {{ font-size: 12px; font-weight: bold; text-transform: uppercase; color: #64748b; }}
+        .value {{ font-size: 16px; margin-top: 4px; }}
+        .box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin: 20px 0; }}
+        .footer {{ margin-top: 50px; border-top: 1px solid #cbd5e1; padding-top: 20px; font-size: 12px; color: #64748b; text-align: center; }}
+        @media print {{ body {{ padding: 0; }} .btn-print {{ display: none; }} }}
+    </style>
+</head>
+<body>
+    <div style="text-align: right; margin-bottom: 20px;">
+        <button class="btn-print" onclick="window.print()" style="background: #0284c7; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">🖨️ Imprimir / Salvar PDF</button>
+    </div>
+    <div class="header">
+        <div>
+            <div class="title">CONDOMÍNIO RESIDENCIAL JARDINS</div>
+            <div style="font-size: 14px; color: #64748b;">Notificação e Auto de Infração Administrativa</div>
+        </div>
+        <div class="badge">PROCESSO #{oc['id']:04d}</div>
+    </div>
+    
+    <div class="box">
+        <div class="field-group">
+            <div class="label">Unidade Notificada</div>
+            <div class="value"><strong>Apartamento {oc['apartamento_alvo']} - Bloco {oc['bloco_alvo']}</strong></div>
+        </div>
+        <div class="field-group">
+            <div class="label">Data e Hora do Registro</div>
+            <div class="value">{oc['data_hora']}</div>
+        </div>
+        <div class="field-group">
+            <div class="label">Natureza da Infração</div>
+            <div class="value">{oc['categoria']} (Regimento Interno - Cláusula de Convivência & Sossego)</div>
+        </div>
+        <div class="field-group">
+            <div class="label">Descrição do Fato Conflituoso</div>
+            <div class="value" style="font-style: italic;">"{oc['descricao']}"</div>
+        </div>
+    </div>
+    
+    <div class="box" style="border-left: 4px solid #0284c7;">
+        <div class="field-group">
+            <div class="label">Sanção Aplicada pela Administração</div>
+            <div class="value"><strong style="color: #b91c1c; font-size: 18px;">{oc['penalidade']}</strong></div>
+        </div>
+        <div class="field-group">
+            <div class="label">Parecer do Síndico / Moderador</div>
+            <div class="value">{oc['decisao_sindico'] or 'Aprovado envio de notificação formal conforme regimento.'}</div>
+        </div>
+        {f'<div class="field-group"><div class="label">Valor da Sanção Pecuniária</div><div class="value"><strong>R$ {oc["valor_multa"]:.2f}</strong></div></div>' if oc['valor_multa'] > 0 else ''}
+    </div>
+    
+    <div style="margin-top: 40px; font-size: 14px; line-height: 1.6; color: #334155;">
+        <p>Esta notificação foi homologada via <strong>ConciliaZap</strong>, sistema autônomo de gestão condominial com auditoria de registros. A preservação da identidade das partes garante a imparcialidade e o cumprimento dos Arts. 1.336 e 1.337 do Código Civil Brasileiro.</p>
+    </div>
+    
+    <div class="footer">
+        Condomínio Residencial Jardins • Sistema ConciliaZap 24/7 • Emissão em {datetime.now().strftime("%d/%m/%Y às %H:%M:%S")}
+    </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
+# --- 6. GESTÃO DE MORADORES E IMPORTAÇÃO EM LOTE ---
+@app.get("/api/moradores")
+async def listar_moradores():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM moradores ORDER BY bloco ASC, apartamento ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+@app.post("/api/moradores")
+async def cadastrar_morador(m: MoradorCreate):
+    tel_limpo = sanitizar_telefone(m.telefone)
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+        INSERT INTO moradores (nome, telefone, apartamento, bloco, tipo)
+        VALUES (?, ?, ?, ?, ?)
+        """, (m.nome, tel_limpo, m.apartamento, m.bloco.upper(), m.tipo))
+        novo_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return {"status": "success", "id": novo_id, "mensagem": "Morador cadastrado com sucesso!"}
+    except sqlite3.IntegrityError:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Este telefone já se encontra cadastrado em outra unidade.")
+
+@app.post("/admin/moradores")
+async def cadastrar_morador_teste(
+    nome: Optional[str] = Query(None), 
+    telefone: Optional[str] = Query(None), 
+    apartamento: Optional[str] = Query(None), 
+    bloco: Optional[str] = Query(None),
+    body: Optional[MoradorCreate] = Body(None)
+):
+    """
+    Rota de apoio administrativo / testes que aceita tanto Query Params quanto JSON Body.
+    """
+    final_nome = (body.nome if body else None) or nome
+    final_tel = (body.telefone if body else None) or telefone
+    final_ap = (body.apartamento if body else None) or apartamento
+    final_bloco = (body.bloco if body else None) or bloco
+    
+    if not all([final_nome, final_tel, final_ap, final_bloco]):
+        raise HTTPException(status_code=422, detail="Campos nome, telefone, apartamento e bloco são obrigatórios.")
+        
+    tel_limpo = sanitizar_telefone(final_tel)
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO moradores (nome, telefone, apartamento, bloco, tipo) VALUES (?, ?, ?, ?, 'morador')", 
+                       (final_nome, tel_limpo, final_ap, final_bloco.upper()))
+        conn.commit()
+        conn.close()
+        return {"status": "Morador cadastrado com sucesso!"}
+    except sqlite3.IntegrityError:
+        raise HTTPException(status_code=400, detail="Este telefone já está cadastrado.")
+
+@app.delete("/api/moradores/{morador_id}")
+async def deletar_morador(morador_id: int):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM moradores WHERE id = ?", (morador_id,))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "mensagem": "Morador excluído do sistema."}
+
+@app.post("/api/moradores/importar-lote")
+async def importar_moradores_lote(lista: List[MoradorCreate]):
+    conn = get_db()
+    cursor = conn.cursor()
+    importados = 0
+    ignorados = 0
+    for m in lista:
+        tel_limpo = sanitizar_telefone(m.telefone)
+        try:
+            cursor.execute("""
+            INSERT INTO moradores (nome, telefone, apartamento, bloco, tipo)
+            VALUES (?, ?, ?, ?, ?)
+            """, (m.nome, tel_limpo, m.apartamento, m.bloco.upper(), m.tipo))
+            importados += 1
+        except sqlite3.IntegrityError:
+            ignorados += 1
+    conn.commit()
+    conn.close()
+    return {"status": "success", "importados": importados, "ignorados": ignorados}
+
+# --- 7. ÁREAS COMUNS E RESERVAS ---
+@app.get("/api/reservas")
+async def listar_reservas():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT r.*, m.nome as morador_nome, m.apartamento, m.bloco, m.telefone
+    FROM reservas r
+    JOIN moradores m ON r.morador_id = m.id
+    ORDER BY r.data_reserva ASC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+@app.post("/api/reservas")
+async def criar_reserva(reserva: ReservaCreate):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+    INSERT INTO reservas (morador_id, area, data_reserva, periodo, status)
+    VALUES (?, ?, ?, ?, 'Confirmada')
+    """, (reserva.morador_id, reserva.area, reserva.data_reserva, reserva.periodo))
+    reserva_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return {"status": "success", "id": reserva_id, "mensagem": "Reserva confirmada com sucesso!"}
+
+@app.delete("/api/reservas/{reserva_id}")
+async def cancelar_reserva(reserva_id: int):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM reservas WHERE id = ?", (reserva_id,))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "mensagem": "Reserva cancelada."}
+
+# --- 8. ACHADOS E PERDIDOS ---
+@app.get("/api/achados")
+async def listar_achados():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM achados_perdidos ORDER BY id DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+@app.post("/api/achados")
+async def registrar_achado(achado: AchadoCreate):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+    INSERT INTO achados_perdidos (item, local_encontrado, status)
+    VALUES (?, ?, 'Disponível')
+    """, (achado.item, achado.local_encontrado))
+    item_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return {"status": "success", "id": item_id, "mensagem": "Item registrado em Achados e Perdidos!"}
+
+@app.put("/api/achados/{item_id}/devolver")
+async def devolver_achado(item_id: int, devolvido_para: str = Body(..., embed=True)):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+    UPDATE achados_perdidos SET status = 'Devolvido', devolvido_para = ? WHERE id = ?
+    """, (devolvido_para, item_id))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "mensagem": "Item marcado como devolvido."}
+
+# --- 9. MONETIZAÇÃO SAAS E PIX NATIVO EMV (BANCO CENTRAL) ---
+@app.get("/api/planos")
+async def listar_planos():
+    return [
+        {
+            "id": "starter",
+            "nome": "Condomínio Starter (Até 40 Unidades)",
+            "preco": 99.00,
+            "periodo": "mês",
+            "recursos": ["Bot WhatsApp 24/7", "Moderação com 1 Clique", "Ocorrências Ilimitadas", "Suporte WhatsApp"]
+        },
+        {
+            "id": "pro",
+            "nome": "Condomínio Pro (Até 150 Unidades)",
+            "preco": 199.00,
+            "periodo": "mês",
+            "recursos": ["Tudo do Starter", "Módulo de Áreas Comuns", "Achados e Perdidos", "Laudos em PDF", "Painel Síndico Completo"]
+        },
+        {
+            "id": "enterprise",
+            "nome": "Condomínio Master / Administradoras",
+            "preco": 399.00,
+            "periodo": "mês",
+            "recursos": ["Múltiplas Torres", "Unidades Ilimitadas", "API Evolution Dedicada", "Relatórios Financeiros", "SLA 99.9%"]
+        }
+    ]
+
+@app.post("/api/pix/gerar")
+async def gerar_pix_cobranca(req: PixRequest):
+    """
+    Gera o código Copia-e-Cola PIX oficial (EMV Bacen) e URL de QR Code dinâmico.
+    """
+    payload_emv = pix.gerar_pix_copia_e_cola(
+        chave_pix=req.chave_pix,
+        nome_recebedor=req.nome_recebedor,
+        cidade=req.cidade,
+        valor=req.valor,
+        txid=f"CONCILIA{int(time.time())}"
+    )
+    qr_code_url = pix.gerar_url_qr_code(payload_emv)
+    return {
+        "status": "success",
+        "plano": req.plano_nome,
+        "valor": req.valor,
+        "pix_copia_e_cola": payload_emv,
+        "qr_code_url": qr_code_url,
+        "chave_pix": req.chave_pix,
+        "nome_recebedor": req.nome_recebedor
+    }
+
+# --- 10. CONFIGURAÇÕES DO CONDOMÍNIO & WHATSAPP ---
+@app.get("/api/config")
+async def obter_configuracoes():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT chave, valor FROM configuracoes")
+    rows = cursor.fetchall()
+    conn.close()
+    return {r["chave"]: r["valor"] for r in rows}
+
+@app.post("/api/config")
+async def salvar_configuracoes(dados: Dict[str, str]):
+    conn = get_db()
+    cursor = conn.cursor()
+    for k, v in dados.items():
+        cursor.execute("INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES (?, ?)", (k, v))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "mensagem": "Configurações salvas!"}
+
+# --- 11. PÁGINAS LEGAIS E CONFORMIDADE (LGPD E TERMOS) ---
+@app.get("/termos", response_class=HTMLResponse)
+async def pagina_termos():
+    return HTMLResponse(content=obter_html_termos())
+
+@app.get("/privacidade", response_class=HTMLResponse)
+async def pagina_privacidade():
+    return HTMLResponse(content=obter_html_privacidade())
+
+def obter_html_termos() -> str:
+    return """<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termos de Uso - ConciliaZap</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #334155; }
+        h1, h2 { color: #0f172a; }
+        .alert { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 20px 0; border-radius: 4px; }
+        a { color: #0284c7; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="/">← Voltar ao Painel ConciliaZap</a>
+    <h1>Termos de Uso e Condições de Serviço</h1>
+    <p><em>Última atualização: Outubro de 2026</em></p>
+    
+    <div class="alert">
+        <strong>⚠️ AVISO REGULATÓRIO E ÉTICO IMPORTANTE:</strong><br>
+        O ConciliaZap é uma ferramenta tecnológica de comunicação, automação e mediação pacífica de rotina condominial. 
+        Este sistema <strong>NÃO substitui autoridades policiais, judiciais ou serviços médicos/psicológicos de emergência</strong>. 
+        Em caso de violência física, ameaça à vida ou crimes graves, contate imediatamente a Polícia Militar (190) ou Disque 190.
+    </div>
+
+    <h2>1. Objeto do Serviço</h2>
+    <p>O ConciliaZap provê uma plataforma de automação de mensagens, gestão de reservas e suporte administrativo ao síndico para despersonalizar o contato e evitar atritos entre condôminos.</p>
+
+    <h2>2. Classificação Indicativa de Idade</h2>
+    <p>O serviço de envio de ocorrências é indicado para residentes a partir de <strong>16 anos</strong>. A contratação de planos comerciais e pagamentos é restrita a <strong>maiores de 18 anos</strong> ou legalmente representados.</p>
+
+    <h2>3. Moderação do Síndico</h2>
+    <p>Todo registro feito por morador passa por crivo e moderação humana do Síndico ou Administradora antes da expedição de advertências formais ou penalidades pecuniárias, coibindo denúncias caluniosas ou trotes.</p>
+
+    <h2>4. Legislação Aplicável</h2>
+    <p>Estes termos regem-se pelas Leis da República Federativa do Brasil, em especial o Código Civil (Lei 10.406/2002 - Arts. 1.331 a 1.358) e o Marco Civil da Internet (Lei 12.965/2014).</p>
+</body>
+</html>"""
+
+def obter_html_privacidade() -> str:
+    return """<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Política de Privacidade e LGPD - ConciliaZap</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #334155; }
+        h1, h2 { color: #0f172a; }
+        .box { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 6px; margin: 20px 0; }
+        a { color: #0284c7; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="/">← Voltar ao Painel ConciliaZap</a>
+    <h1>Política de Privacidade e Conformidade LGPD</h1>
+    <p><em>Em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018)</em></p>
+
+    <div class="box">
+        <strong>🔒 Princípio do Sigilo da Denúncia:</strong><br>
+        O ConciliaZap foi arquitetado com privacidade por padrão (Privacy by Design). Quando uma notificação é enviada a uma unidade sobre barulho ou ruído, o nome e contato do morador denunciante <strong>nunca são expostos</strong> ao vizinho, resguardando a paz e a integridade física dos moradores.
+    </div>
+
+    <h2>1. Dados Tratados</h2>
+    <p>Tratamos apenas os dados essenciais para o cumprimento das obrigações condominiais:</p>
+    <ul>
+        <li>Nome completo do condômino/locatário</li>
+        <li>Número de telefone para comunicação via WhatsApp</li>
+        <li>Identificação da unidade (Apartamento e Bloco)</li>
+        <li>Histórico de registros de ocorrências e reservas de áreas comuns</li>
+    </ul>
+
+    <h2>2. Base Legal</h2>
+    <p>O tratamento de dados é realizado com base no cumprimento de obrigação legal e regulatória (administração de condomínio edilício - Art. 7º, II da LGPD) e na execução regular de contrato de convivência (Art. 7º, V da LGPD).</p>
+
+    <h2>3. Direitos do Titular</h2>
+    <p>O titular tem direito de consultar, retificar ou solicitar a anonimização de seus dados cadastrais mediante contato direto com a administração do condomínio.</p>
+</body>
+</html>"""
+
+# --- 12. RESOLUÇÃO UNIVERSAL DE ARQUIVOS ESTÁTICOS (REGRA GLOBAL MANDATÓRIA) ---
+# Suporta tanto a pasta public/ quanto a raiz do projeto e SPA fallback
+CANDIDATE_DIRS = [
+    os.path.join(os.path.dirname(__file__), "public"),
+    os.path.dirname(__file__),
+    os.path.join(os.getcwd(), "public"),
+    os.getcwd()
+]
+
+# Monta arquivos estáticos caso exista pasta public
+public_dir = os.path.join(os.path.dirname(__file__), "public")
+if os.path.exists(public_dir):
+    app.mount("/static", StaticFiles(directory=public_dir), name="static")
+
+@app.get("/")
+@app.get("/painel")
+async def servir_frontend_principal():
+    for base in CANDIDATE_DIRS:
+        caminho_index = os.path.join(base, "index.html")
+        if os.path.exists(caminho_index):
+            return FileResponse(caminho_index)
+            
+    # Fallback se index.html ainda não existir fisicamente
+    return HTMLResponse("<h1>ConciliaZap rodando! Acesse /api/health ou crie index.html</h1>")
+
+# Fallback universal para outros arquivos estáticos requisitados
+@app.get("/{caminho:path}")
+async def servir_estatico_ou_spa(caminho: str):
+    # Ignora rotas de API
+    if caminho.startswith("api/") or caminho.startswith("webhook/"):
+        raise HTTPException(status_code=404, detail="Rota de API inexistente")
+        
+    for base in CANDIDATE_DIRS:
+        arquivo = os.path.join(base, caminho)
+        if os.path.exists(arquivo) and os.path.isfile(arquivo):
+            return FileResponse(arquivo)
+            
+    # SPA Fallback para index.html
+    for base in CANDIDATE_DIRS:
+        caminho_index = os.path.join(base, "index.html")
+        if os.path.exists(caminho_index):
+            return FileResponse(caminho_index)
+            
+    raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+
+if __name__ == "__main__":
+    import uvicorn
+    porta = int(os.environ.get("PORT", 8000))
+    print(f"🚀 Iniciando ConciliaZap 24/7 na porta {porta}...")
+    uvicorn.run("main:app", host="0.0.0.0", port=porta, reload=False)

@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: conciliazap
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt && python tests/run_all.py
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: PORT
+        value: 8000

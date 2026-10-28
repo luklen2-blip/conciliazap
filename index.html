@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConciliaZap - Gestão de Conflitos & Condomínio 24/7</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        },
+                        whatsapp: '#25D366'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .chat-bubble-user {
+            background-color: #d9fdd3;
+            border-radius: 8px 8px 0px 8px;
+        }
+        .chat-bubble-bot {
+            background-color: #ffffff;
+            border-radius: 8px 8px 8px 0px;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-40 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
+                    <i class="fa-solid fa-comments text-xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-extrabold text-lg tracking-tight text-white">Concilia<span class="text-brand-500">Zap</span></span>
+                        <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-400 border border-brand-500/30">Nuvem 24/7</span>
+                    </div>
+                    <p class="text-xs text-slate-400" id="headerCondoName">Condomínio Residencial Jardins</p>
+                </div>
+            </div>
+
+            <!-- Health Status & Quick Action -->
+            <div class="flex items-center space-x-4">
+                <div class="hidden sm:flex items-center space-x-2 text-xs bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-slate-300 font-medium" id="healthBadge">Online (Carregando...)</span>
+                </div>
+                <button onclick="trocarAba('simulador')" class="bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow transition flex items-center space-x-1.5">
+                    <i class="fa-brands fa-whatsapp text-sm"></i>
+                    <span>Simular WhatsApp</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="bg-white border-b border-slate-200 sticky top-16 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 sm:space-x-6 overflow-x-auto py-2 text-sm font-medium">
+            <button onclick="trocarAba('painel')" id="tab-btn-painel" class="tab-btn flex items-center space-x-2 px-3 py-2 rounded-lg text-brand-600 bg-brand-50 font-bold transition">
+                <i class="fa-solid fa-gavel"></i>
+                <span>Moderação do Síndico</span>
+                <span id="badgeContadorPendentes" class="ml-1.5 bg-red-500 text-white text-[11px] px-1.5 py-0.2 rounded-full hidden">0</span>
+            </button>
+            <button onclick="trocarAba('simulador')" id="tab-btn-simulador" class="tab-btn flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+                <i class="fa-brands fa-whatsapp text-emerald-600"></i>
+                <span>Simulador de Bot</span>
+            </button>
+            <button onclick="trocarAba('moradores')" id="tab-btn-moradores" class="tab-btn flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+                <i class="fa-solid fa-users"></i>
+                <span>Moradores & Unidades</span>
+            </button>
+            <button onclick="trocarAba('reservas')" id="tab-btn-reservas" class="tab-btn flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+                <i class="fa-solid fa-calendar-check"></i>
+                <span>Áreas Comuns & Achados</span>
+            </button>
+            <button onclick="trocarAba('planos')" id="tab-btn-planos" class="tab-btn flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+                <i class="fa-solid fa-qrcode text-brand-600"></i>
+                <span>Planos SaaS & PIX</span>
+            </button>
+            <button onclick="trocarAba('configuracoes')" id="tab-btn-configuracoes" class="tab-btn flex items-center space-x-2 px-3 py-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+                <i class="fa-solid fa-sliders"></i>
+                <span>Configurações</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+        <!-- Stat Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase">Aguardando Moderação</p>
+                    <p class="text-2xl font-black text-amber-600 mt-1" id="statPendentes">0</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-hourglass-half"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase">Ocorrências Resolvidas</p>
+                    <p class="text-2xl font-black text-brand-600 mt-1" id="statResolvidas">0</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-brand-100 text-brand-600 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-check-double"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase">Moradores Ativos</p>
+                    <p class="text-2xl font-black text-blue-600 mt-1" id="statMoradores">0</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-building-user"></i>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase">Reservas do Mês</p>
+                    <p class="text-2xl font-black text-indigo-600 mt-1" id="statReservas">0</p>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-umbrella-beach"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================== ABA 1: PAINEL DE MODERAÇÃO DO SÍNDICO =================== -->
+        <section id="aba-painel" class="space-y-6">
+            <!-- Banner Explicativo de Impessoalidade -->
+            <div class="bg-gradient-to-r from-blue-900 to-indigo-950 text-white p-5 rounded-2xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-shield-halved text-brand-400 text-lg"></i>
+                        <h2 class="font-bold text-lg">Painel de Moderação Impessoal & Desescalada</h2>
+                    </div>
+                    <p class="text-sm text-slate-300 max-w-2xl">
+                        Quando um morador reporta barulho via WhatsApp, o sistema registra sigilosamente. 
+                        O síndico atua apenas como homologador com <strong>1 clique</strong>, tirando o peso emocional do conflito direto entre vizinhos.
+                    </p>
+                </div>
+                <div class="flex items-center space-x-2 self-end md:self-auto">
+                    <button onclick="carregarOcorrencias()" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-medium transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-rotate"></i>
+                        <span>Atualizar Fila</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros de Ocorrências -->
+            <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200">
+                <div class="flex items-center space-x-2 text-xs font-medium text-slate-600">
+                    <span>Filtrar por:</span>
+                    <button onclick="filtrarOcorrencias('Todas')" class="filtro-btn px-2.5 py-1 rounded-md bg-slate-200 text-slate-800 font-bold">Todas</button>
+                    <button onclick="filtrarOcorrencias('Pendente')" class="filtro-btn px-2.5 py-1 rounded-md hover:bg-slate-100 text-slate-600">Pendentes</button>
+                    <button onclick="filtrarOcorrencias('Aprovada')" class="filtro-btn px-2.5 py-1 rounded-md hover:bg-slate-100 text-slate-600">Aprovadas</button>
+                    <button onclick="filtrarOcorrencias('Rejeitada')" class="filtro-btn px-2.5 py-1 rounded-md hover:bg-slate-100 text-slate-600">Arquivadas</button>
+                </div>
+                <span class="text-xs text-slate-400" id="contadorOcorrenciasTexto">Carregando fila...</span>
+            </div>
+
+            <!-- Fila de Cartões de Ocorrências -->
+            <div id="listaOcorrenciasContainer" class="space-y-4">
+                <!-- Preenchido via JavaScript -->
+            </div>
+        </section>
+
+        <!-- =================== ABA 2: SIMULADOR DE BOT WHATSAPP =================== -->
+        <section id="aba-simulador" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Controles do Simulador -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex items-center space-x-2 border-b border-slate-100 pb-3">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                <i class="fa-brands fa-whatsapp text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-900 text-sm">Simulador de Conversa</h3>
+                                <p class="text-xs text-slate-500">Teste o bot direto no navegador como se fosse morador</p>
+                            </div>
+                        </div>
+
+                        <!-- Seletor de Morador Pré-cadastrado -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Simular como:</label>
+                            <select id="simuladorMoradorSelect" onchange="selecionarMoradorSimulador()" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-slate-50 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                                <option value="5511999990302">Carlos Mendes (Ap 302 - Bloco A)</option>
+                                <option value="5511999990402">Marcos Souza (Ap 402 - Bloco A)</option>
+                                <option value="5511999990205">Juliana Costa (Ap 205 - Bloco B)</option>
+                                <option value="5511999990001">Roberto Oliveira (Síndico - Ap 101)</option>
+                                <option value="5511888880000">Desconhecido / Não Cadastrado</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Telefone WhatsApp:</label>
+                            <input type="text" id="simuladorTelefone" value="5511999990302" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white font-mono text-xs">
+                        </div>
+
+                        <!-- Sugestões Rápidas de Mensagens -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Testes Rápidos em 1 Clique:</label>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <button onclick="enviarMensagemRapida('Tem muito barulho de som alto e obra no apto 402 agora')" class="p-2 text-left bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 transition">
+                                    🔊 <strong>Denunciar Barulho no 402</strong>
+                                </button>
+                                <button onclick="enviarMensagemRapida('Quero saber como reservar a churrasqueira no fim de semana')" class="p-2 text-left bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 transition">
+                                    🥩 <strong>Consultar Reservas</strong>
+                                </button>
+                                <button onclick="enviarMensagemRapida('Perdi uma chave de carro na garagem ontem, alguém achou?')" class="p-2 text-left bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 transition">
+                                    🔑 <strong>Achados & Perdidos</strong>
+                                </button>
+                                <button onclick="enviarMensagemRapida('Qual é o horário de silêncio do condomínio?')" class="p-2 text-left bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 transition">
+                                    📖 <strong>Consultar Regras</strong>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-1">
+                            <p class="font-bold flex items-center space-x-1">
+                                <i class="fa-solid fa-lightbulb"></i>
+                                <span>Como funciona a conciliação:</span>
+                            </p>
+                            <p>Ao reportar barulho, o bot responde imediatamente com garantia de sigilo, e uma ocorrência é criada no <strong>Painel do Síndico</strong> para você aprovar o aviso ao infrator.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Janela Interativa WhatsApp -->
+                <div class="lg:col-span-7">
+                    <div class="bg-[#efeae2] border border-slate-300 rounded-2xl shadow-md overflow-hidden flex flex-col h-[560px]">
+                        <!-- WhatsApp Header -->
+                        <div class="bg-[#075e54] text-white p-3.5 flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white shadow">
+                                    <i class="fa-solid fa-robot"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-sm leading-tight">ConciliaZap Condomínio</h4>
+                                    <p class="text-[11px] text-emerald-200 flex items-center space-x-1">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                        <span>Conta Comercial Oficial • 24/7</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <button onclick="limparHistoricoChat()" class="text-xs bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded text-white transition">
+                                <i class="fa-solid fa-trash-can mr-1"></i> Limpar
+                            </button>
+                        </div>
+
+                        <!-- Chat Messages Container -->
+                        <div id="chatMessages" class="flex-1 p-4 overflow-y-auto space-y-3 text-sm">
+                            <!-- Mensagem inicial de boas-vindas do bot -->
+                            <div class="flex justify-start">
+                                <div class="chat-bubble-bot p-3 max-w-[85%] shadow-sm text-slate-800 space-y-1">
+                                    <p class="font-bold text-xs text-emerald-700 flex items-center space-x-1">
+                                        <i class="fa-solid fa-shield-halved"></i>
+                                        <span>ConciliaZap Atendimento</span>
+                                    </p>
+                                    <p class="text-xs leading-relaxed">
+                                        Olá! Sou o assistente digital 24/7 do seu condomínio. Como posso te ajudar hoje?
+                                        <br><br>
+                                        • Digite <strong>"Barulho no [apto]"</strong> para registrar ruídos.<br>
+                                        • Digite <strong>"Reserva"</strong> para áreas comuns.<br>
+                                        • Digite <strong>"Achados"</strong> para verificar itens perdidos.
+                                    </p>
+                                    <span class="text-[10px] text-slate-400 block text-right">Agora</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Input Box -->
+                        <div class="bg-[#f0f2f5] p-3 border-t border-slate-300 flex items-center space-x-2">
+                            <input type="text" id="chatInput" placeholder="Mensagem..." onkeypress="tratarEnterChat(event)" class="flex-1 bg-white border border-slate-300 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <button onclick="enviarMensagemChat()" class="w-10 h-10 rounded-full bg-[#128c7e] hover:bg-[#075e54] text-white flex items-center justify-center transition shadow">
+                                <i class="fa-solid fa-paper-plane text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================== ABA 3: MORADORES & UNIDADES =================== -->
+        <section id="aba-moradores" class="hidden space-y-6">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="font-bold text-lg text-slate-900">Cadastro de Moradores & Unidades</h2>
+                    <p class="text-xs text-slate-500">Gerencie a lista de moradores ativos com validação de telefone para acesso ao WhatsApp do condomínio.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="abrirModalImportarLote()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-3.5 py-2 rounded-lg border border-slate-300 transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-file-import"></i>
+                        <span>Importar Planilha (Lote)</span>
+                    </button>
+                    <button onclick="abrirModalNovoMorador()" class="bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs px-3.5 py-2 rounded-lg shadow transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <span>Novo Morador</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabela de Moradores -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                    <div class="relative w-72">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                        <input type="text" id="buscaMoradorInput" onkeyup="filtrarTabelaMoradores()" placeholder="Buscar por nome, ap ou telefone..." class="w-full text-xs pl-8 pr-3 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-500 bg-white">
+                    </div>
+                    <span class="text-xs text-slate-500" id="contadorMoradoresTabela">Total: 0</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-100 text-slate-600 uppercase font-bold border-b border-slate-200">
+                            <tr>
+                                <th class="p-3">Unidade</th>
+                                <th class="p-3">Nome do Condômino</th>
+                                <th class="p-3">WhatsApp</th>
+                                <th class="p-3">Perfil</th>
+                                <th class="p-3 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaMoradoresBody" class="divide-y divide-slate-100">
+                            <!-- Preenchido via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================== ABA 4: ÁREAS COMUNS & ACHADOS =================== -->
+        <section id="aba-reservas" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Áreas Comuns & Reservas -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                                <i class="fa-solid fa-calendar-days text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-900 text-sm">Locação de Áreas Comuns</h3>
+                                <p class="text-xs text-slate-500">Salão de Festas, Churrasqueira Gourmet, etc.</p>
+                            </div>
+                        </div>
+                        <button onclick="abrirModalNovaReserva()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">
+                            + Nova Reserva
+                        </button>
+                    </div>
+
+                    <div id="listaReservasContainer" class="space-y-3">
+                        <!-- Preenchido via JS -->
+                    </div>
+                </div>
+
+                <!-- Achados & Perdidos -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                                <i class="fa-solid fa-box-open text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-900 text-sm">Achados e Perdidos</h3>
+                                <p class="text-xs text-slate-500">Itens resguardados pela portaria</p>
+                            </div>
+                        </div>
+                        <button onclick="abrirModalNovoAchado()" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">
+                            + Cadastrar Item
+                        </button>
+                    </div>
+
+                    <div id="listaAchadosContainer" class="space-y-3">
+                        <!-- Preenchido via JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================== ABA 5: PLANOS SAAS & PIX (MONETIZAÇÃO) =================== -->
+        <section id="aba-planos" class="hidden space-y-6">
+            <div class="text-center max-w-2xl mx-auto space-y-2 mb-8">
+                <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-3 py-1 rounded-full border border-brand-200">Modelo de Negócio SaaS</span>
+                <h2 class="text-2xl font-black text-slate-900">Monetize seu ConciliaZap com Condomínios</h2>
+                <p class="text-xs text-slate-500">
+                    O mercado de condomínios prioriza a economia de tempo e a paz social. Cobre mensalidades recorrentes por unidade ou por torre com pagamento automatizado via PIX oficial do Banco Central.
+                </p>
+            </div>
+
+            <!-- Grid de Planos -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="gridPlanosSaaS">
+                <!-- Preenchido via JS -->
+            </div>
+
+            <!-- Banner do Modelo de Negócio do Tutorial -->
+            <div class="bg-slate-900 text-slate-300 p-6 rounded-2xl border border-slate-800 space-y-4">
+                <div class="flex items-center space-x-2 text-brand-400 font-bold">
+                    <i class="fa-solid fa-sack-dollar text-xl"></i>
+                    <h3 class="text-lg text-white">Como lucrar R$ 3.000 a R$ 15.000/mês com este SaaS</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div class="p-3 bg-slate-800/60 rounded-xl border border-slate-700">
+                        <p class="font-bold text-white mb-1">1. Custo Operacional Quase Zero</p>
+                        <p class="text-slate-400">Rodando no Render ou Railway + SQLite/Postgres com Evolution API, seu custo total é inferior a R$ 30 a R$ 60/mês por condomínio.</p>
+                    </div>
+                    <div class="p-3 bg-slate-800/60 rounded-xl border border-slate-700">
+                        <p class="font-bold text-white mb-1">2. Proposta Irrecusável ao Síndico</p>
+                        <p class="text-slate-400">O síndico não precisa mais ligar brigando com moradores. O robô faz a notificação impessoal e o síndico apenas homologa com 1 clique.</p>
+                    </div>
+                    <div class="p-3 bg-slate-800/60 rounded-xl border border-slate-700">
+                        <p class="font-bold text-white mb-1">3. Escala Rápida</p>
+                        <p class="text-slate-400">10 condomínios pagando R$ 199/mês = R$ 1.990/mês de receita recorrente líquida (MRR). 30 condomínios = R$ 5.970/mês.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================== ABA 6: CONFIGURAÇÕES & WHATSAPP API =================== -->
+        <section id="aba-configuracoes" class="hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-3xl space-y-5">
+                <div class="flex items-center space-x-3 border-b border-slate-100 pb-4">
+                    <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-slate-900">Configurações Gerais e Integração WhatsApp</h2>
+                        <p class="text-xs text-slate-500">Conecte sua instância da Evolution API, Z-API ou servidor webhook.</p>
+                    </div>
+                </div>
+
+                <div class="space-y-4 text-xs">
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase mb-1">Nome Oficial do Condomínio:</label>
+                        <input type="text" id="cfgNomeCondominio" class="w-full text-sm border border-slate-300 rounded-lg p-2.5">
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block font-bold text-slate-700 uppercase mb-1">Horário de Silêncio Oficial:</label>
+                            <input type="text" id="cfgHorarioSilencio" class="w-full text-sm border border-slate-300 rounded-lg p-2.5">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 uppercase mb-1">WhatsApp do Síndico / Moderador:</label>
+                            <input type="text" id="cfgSindicoWhats" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-200">
+                        <h3 class="font-bold text-slate-900 text-sm mb-3">Parâmetros de Conexão WhatsApp API (Evolution API / Z-API)</h3>
+                        
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block font-bold text-slate-700 uppercase mb-1">URL da API (Endpoint do Provedor):</label>
+                                <input type="text" id="cfgApiUrl" placeholder="https://api.seuservidor.com.br" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block font-bold text-slate-700 uppercase mb-1">Nome da Instância:</label>
+                                    <input type="text" id="cfgInstancia" class="w-full text-sm border border-slate-300 rounded-lg p-2.5">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-slate-700 uppercase mb-1">Chave de Autenticação (API Key):</label>
+                                    <input type="password" id="cfgApiKey" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
+                                </div>
+                            </div>
+
+                            <!-- Webhook URL informativa -->
+                            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                                <label class="block font-bold text-slate-600 uppercase text-[11px]">URL do Webhook para colar no painel da sua API:</label>
+                                <div class="flex items-center space-x-2">
+                                    <code id="webhookUrlDisplay" class="bg-white border border-slate-300 px-3 py-1.5 rounded-lg text-emerald-700 font-mono text-xs flex-1 truncate">https://.../webhook/whatsapp</code>
+                                    <button onclick="copiarWebhookUrl()" class="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs hover:bg-slate-700 transition">Copiar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex justify-end">
+                        <button onclick="salvarConfiguracoes()" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold text-xs shadow transition">
+                            Salvar Alterações
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal de Moderação Rápida do Síndico -->
+    <div id="modalModeracao" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center space-x-2">
+                    <span class="w-8 h-8 rounded-lg bg-brand-100 text-brand-600 flex items-center justify-center text-sm font-bold">
+                        <i class="fa-solid fa-gavel"></i>
+                    </span>
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-sm" id="modalModTitulo">Moderar Ocorrência #</h3>
+                        <p class="text-xs text-slate-500" id="modalModSub">Defina a sanção administrativa</p>
+                    </div>
+                </div>
+                <button onclick="fecharModalModeracao()" class="text-slate-400 hover:text-slate-600 text-lg">×</button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <p class="text-slate-500 font-bold uppercase text-[10px]">Unidade Infratora:</p>
+                    <p class="font-extrabold text-sm text-slate-900" id="modalModUnidade">Ap 402 - Bloco A</p>
+                    <p class="text-slate-500 font-bold uppercase text-[10px] mt-2">Descrição do Fato:</p>
+                    <p class="italic text-slate-700" id="modalModDescricao">"..."</p>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Grau da Medida Administrativa:</label>
+                    <select id="modalModPenalidade" onchange="atualizarCampoValorMulta()" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs bg-white">
+                        <option value="Aviso Amigável">🔔 1º Nível: Aviso Amigável de Convivência (Sem Multa)</option>
+                        <option value="Advertência Formal">⚠️ 2º Nível: Advertência Formal do Regimento</option>
+                        <option value="Multa">🚨 3º Nível: Aplicação de Multa Pecuniária</option>
+                    </select>
+                </div>
+
+                <div id="campoValorMultaDiv" class="hidden">
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Valor da Multa (R$):</label>
+                    <input type="number" id="modalModValorMulta" value="250.00" step="50" class="w-full border border-slate-300 rounded-lg p-2 text-xs font-bold text-red-600">
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Parecer / Observação do Síndico:</label>
+                    <textarea id="modalModParecer" rows="2" placeholder="Ex: Procedente. Vários vizinhos reclamaram do ruído após 22h." class="w-full border border-slate-300 rounded-lg p-2 text-xs"></textarea>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+                <button onclick="executarDecisaoModeracao('Rejeitada')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-xs transition">
+                    Arquivar / Sem Ação
+                </button>
+                <button onclick="executarDecisaoModeracao('Aprovada')" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-lg text-xs transition flex items-center space-x-1.5 shadow">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span>Aprovar & Disparar Notificação</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Checkout PIX EMV (Bacen) -->
+    <div id="modalPix" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 text-center">
+            <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">PIX Banco Central Oficial</span>
+                <button onclick="fecharModalPix()" class="text-slate-400 hover:text-slate-600 text-xl">×</button>
+            </div>
+
+            <div class="space-y-1">
+                <h3 class="font-extrabold text-lg text-slate-900" id="pixModalPlanoTitulo">Condomínio Pro</h3>
+                <p class="text-2xl font-black text-brand-600" id="pixModalValor">R$ 199,00</p>
+                <p class="text-xs text-slate-400">Ativação instantânea 24/7 sem taxas de intermediários</p>
+            </div>
+
+            <!-- Imagem QR Code Dinâmica -->
+            <div class="flex justify-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <img id="pixModalQrImg" src="" alt="QR Code PIX" class="w-48 h-48 rounded-lg shadow-sm border border-slate-200">
+            </div>
+
+            <!-- Código Copia e Cola -->
+            <div class="text-left space-y-1">
+                <label class="block text-[11px] font-bold text-slate-600 uppercase">PIX Copia e Cola (EMV):</label>
+                <div class="flex items-center space-x-1">
+                    <input type="text" id="pixModalCopiaCola" readonly class="w-full bg-slate-100 border border-slate-300 rounded-lg p-2 font-mono text-[11px] text-slate-700">
+                    <button onclick="copiarPixPayload()" class="px-3 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1">
+                        <i class="fa-regular fa-copy"></i>
+                        <span>Copiar</span>
+                    </button>
+                </div>
+            </div>
+
+            <p class="text-[11px] text-slate-400">Escaneie no app do seu banco ou copie o código acima.</p>
+        </div>
+    </div>
+
+    <!-- Modal Novo Morador -->
+    <div id="modalNovoMorador" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-100 space-y-3 text-xs">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-sm text-slate-900">Cadastrar Novo Morador</h3>
+                <button onclick="fecharModalNovoMorador()" class="text-slate-400 hover:text-slate-600 text-lg">×</button>
+            </div>
+            <div>
+                <label class="block font-bold text-slate-600 uppercase mb-1">Nome Completo:</label>
+                <input type="text" id="novoMoradorNome" class="w-full border rounded-lg p-2" placeholder="Ex: Maria Fernandes">
+            </div>
+            <div>
+                <label class="block font-bold text-slate-600 uppercase mb-1">WhatsApp (DDD + Número):</label>
+                <input type="text" id="novoMoradorTel" class="w-full border rounded-lg p-2 font-mono" placeholder="Ex: 5511999998888">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block font-bold text-slate-600 uppercase mb-1">Apartamento:</label>
+                    <input type="text" id="novoMoradorAp" class="w-full border rounded-lg p-2" placeholder="304">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-600 uppercase mb-1">Bloco:</label>
+                    <input type="text" id="novoMoradorBloco" class="w-full border rounded-lg p-2" placeholder="B">
+                </div>
+            </div>
+            <div class="pt-2 flex justify-end space-x-2">
+                <button onclick="fecharModalNovoMorador()" class="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg">Cancelar</button>
+                <button onclick="salvarNovoMorador()" class="px-4 py-1.5 bg-brand-600 text-white font-bold rounded-lg">Salvar Morador</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Importação Lote -->
+    <div id="modalImportarLote" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-100 space-y-3 text-xs">
+            <div class="flex justify-between items-center border-b pb-2">
+                <h3 class="font-bold text-sm text-slate-900">Importação em Lote de Moradores</h3>
+                <button onclick="fecharModalImportarLote()" class="text-slate-400 hover:text-slate-600 text-lg">×</button>
+            </div>
+            <p class="text-slate-500">Cole a lista no formato <code>Nome, Telefone, Apartamento, Bloco</code> (uma unidade por linha):</p>
+            <textarea id="importarLoteTexto" rows="5" class="w-full border rounded-lg p-2 font-mono text-[11px]" placeholder="Luciana Dias, 5511977771111, 102, A
+Rodrigo Ramos, 5511977772222, 204, B
+Vanessa Prado, 5511977773333, 301, A"></textarea>
+            <div class="pt-2 flex justify-end space-x-2">
+                <button onclick="fecharModalImportarLote()" class="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg">Cancelar</button>
+                <button onclick="executarImportacaoLote()" class="px-4 py-1.5 bg-brand-600 text-white font-bold rounded-lg">Importar Lista</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-slate-800 text-xs font-semibold flex items-center space-x-2.5 transform translate-y-20 opacity-0 transition duration-300">
+        <span id="toastIcon"><i class="fa-solid fa-circle-check text-emerald-400"></i></span>
+        <span id="toastMsg">Operação realizada</span>
+    </div>
+
+    <!-- Footer Obrigatório com Avisos Legais e LGPD -->
+    <footer class="bg-white border-t border-slate-200 mt-12 py-6 text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3 text-center sm:text-left sm:flex sm:justify-between sm:items-center">
+            <div class="space-y-1">
+                <p class="font-semibold text-slate-700">ConciliaZap © 2026 • Plataforma Autônoma de Gestão Condominial 24/7</p>
+                <p class="text-[11px] text-slate-400">Classificação indicativa: 16+ anos para registros. Contratações restritas a maiores de 18 anos.</p>
+                <p class="text-[11px] text-amber-700 font-medium">⚠️ Ferramenta de conciliação administrativa. Em casos de violência ou risco à vida, acione a Polícia Militar (190).</p>
+            </div>
+            <div class="flex justify-center sm:justify-end space-x-4 font-semibold text-slate-600 text-xs pt-2 sm:pt-0">
+                <a href="/termos" target="_blank" class="hover:text-brand-600 transition">Termos de Uso</a>
+                <span>•</span>
+                <a href="/privacidade" target="_blank" class="hover:text-brand-600 transition">Privacidade & LGPD</a>
+                <span>•</span>
+                <a href="/api/health" target="_blank" class="hover:text-brand-600 transition">Health Status (/api/health)</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Frontend Core Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>
