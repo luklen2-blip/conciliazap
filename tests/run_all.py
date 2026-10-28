@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 import unittest
 from datetime import datetime
 
@@ -155,6 +156,29 @@ class TestConciliaZapCompleto(unittest.TestCase):
         self.assertEqual(res_home.status_code, 200)
         self.assertIn("ConciliaZap", res_home.text)
         print(" [PASS] 09. Resolução universal de arquivos estáticos e SPA validada")
+
+    def test_10_webhook_kiwify(self):
+        """Valida o webhook oficial da Kiwify ativando plano do condomínio 24/7."""
+        payload_kiwify = {
+            "order_id": f"kiwi-test-{int(time.time())}",
+            "order_status": "paid",
+            "Customer": {
+                "full_name": "Luciano Gomes",
+                "email": "luciano@teste.com"
+            },
+            "Product": {
+                "product_name": "Condomínio Pro"
+            },
+            "Commissions": {
+                "charge_amount": 19900
+            }
+        }
+        res = client.post("/api/webhook/kiwify", json=payload_kiwify)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["status"], "success")
+        self.assertIn("Condomínio Pro", res.json()["mensagem"])
+        print(" [PASS] 10. Webhook Kiwify (Postback de Venda Aprovada) validado com sucesso!")
+
 
 if __name__ == "__main__":
     print("\n" + "="*70)

@@ -965,17 +965,18 @@ async def listar_planos():
 async def gerar_pix_cobranca(req: PixRequest):
     """
     Gera o código Copia-e-Cola PIX oficial (EMV Bacen) e URL de QR Code dinâmico,
-    além de suportar métodos adicionais (Boleto Bancário, Link de Cartão e Contato Comercial).
+    além de suportar métodos adicionais (Kiwify Checkout, Boleto Bancário, Link de Cartão e Contato Comercial).
     """
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT chave, valor FROM configuracoes WHERE chave IN ('chave_pix', 'nome_recebedor', 'cidade_recebedor', 'link_cartao', 'whatsapp_vendas')")
+    cursor.execute("SELECT chave, valor FROM configuracoes WHERE chave IN ('chave_pix', 'nome_recebedor', 'cidade_recebedor', 'link_cartao', 'whatsapp_vendas', 'link_kiwify')")
     configs = {r["chave"]: r["valor"] for r in cursor.fetchall()}
     
     chave_final = configs.get("chave_pix") or req.chave_pix or "luciano@conciliazap.com.br"
     nome_final = configs.get("nome_recebedor") or req.nome_recebedor or "Luciano"
     cidade_final = configs.get("cidade_recebedor") or req.cidade or "SAO PAULO"
     link_cartao = configs.get("link_cartao") or "https://mpago.la/pos/conciliazap"
+    link_kiwify = configs.get("link_kiwify") or "https://pay.kiwify.com.br/conciliazap"
     whatsapp_vendas = configs.get("whatsapp_vendas") or "5511999998888"
     
     txid = f"CONCILIA{int(time.time())}{os.urandom(2).hex().upper()}"
@@ -1012,9 +1013,72 @@ async def gerar_pix_cobranca(req: PixRequest):
         "cidade": cidade_final,
         "boleto_linha": boleto_linha,
         "link_cartao": link_cartao,
+        "link_kiwify": link_kiwify,
         "whatsapp_vendas": whatsapp_vendas,
         "whatsapp_link": zap_url
     }
+
+# --- WEBHOOK OFICIAL KIWIFY ---
+@app.post("/api/webhook/kiwify")
+async def webhook_kiwify(request: Request):
+    """
+    Webhook oficial para integração com Kiwify.
+    Recebe eventos de compra aprovada (order_status: 'paid' ou 'approved') e ativa o plano no condomínio.
+    """
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="JSON inválido.")
+        
+    order_id = payload.get("order_id") or payload.get("id") or f"KIWI-{int(time.time())}"
+    order_status = str(payload.get("order_status") or payload.get("status") or "").lower()
+    
+    prod_data = payload.get("Product")
+    product_name = (prod_data.get("product_name") if isinstance(prod_data, dict) else None) or payload.get("product_name") or "Condomínio Pro"
+    
+    customer = payload.get("Customer") if isinstance(payload.get("Customer"), dict) else {}
+    customer_name = customer.get("full_name") or payload.get("full_name") or "Cliente Kiwify"
+    
+    commissions = payload.get("Commissions") if isinstance(payload.get("Commissions"), dict) else {}
+    charge_amount = (commissions.get("charge_amount", 0) / 100.0) if commissions.get("charge_amount") else 199.00
+    
+    agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    if order_status in ["paid", "approved", "completed", "pago"]:
+        cursor.execute("""
+        INSERT OR REPLACE INTO cobrancas_pix (txid, condominio_id, plano, valor, status, pix_copia_e_cola, qr_code_url, pago_em)
+        VALUES (?, 1, ?, ?, 'PAGO', 'PAGAMENTO_VIA_KIWIFY', 'KIWIFY_CHECKOUT', ?)
+        """, (order_id, product_name, charge_amount, agora))
+        
+        cursor.execute("UPDATE condominios SET plano_ativo = ? WHERE id = 1", (product_name,))
+        conn.commit()
+        conn.close()
+        
+        return {
+            "status": "success",
+            "mensagem": f"Pagamento Kiwify processado com sucesso! Plano {product_name} ativado para {customer_name}.",
+            "order_id": order_id,
+            "order_status": order_status
+        }
+    elif order_status in ["refunded", "reembolsado", "chargeback"]:
+        cursor.execute("UPDATE cobrancas_pix SET status = 'REEMBOLSADO' WHERE txid = ?", (order_id,))
+        cursor.execute("UPDATE condominios SET plano_ativo = 'starter' WHERE id = 1")
+        conn.commit()
+        conn.close()
+        return {
+            "status": "refunded",
+            "mensagem": "Reembolso Kiwify registrado.",
+            "order_id": order_id
+        }
+    else:
+        conn.close()
+        return {
+            "status": "ignored",
+            "mensagem": f"Status '{order_status}' recebido e registrado sem alteração de plano.",
+            "order_id": order_id
+        }
 
 @app.post("/api/pix/confirmar")
 async def confirmar_pagamento_pix(req: PixConfirmRequest):

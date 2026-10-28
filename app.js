@@ -646,6 +646,9 @@ async function gerarPixPlano(nome, preco) {
         document.getElementById("pixModalQrImg").src = data.qr_code_url;
         document.getElementById("pixModalCopiaCola").value = data.pix_copia_e_cola;
 
+        if (document.getElementById("btnCheckoutKiwify")) {
+            document.getElementById("btnCheckoutKiwify").href = data.link_kiwify || "https://pay.kiwify.com.br/conciliazap";
+        }
         if (document.getElementById("modalBoletoLinha")) {
             document.getElementById("modalBoletoLinha").value = data.boleto_linha || "";
         }
@@ -656,7 +659,7 @@ async function gerarPixPlano(nome, preco) {
             document.getElementById("btnZapComercial").href = data.whatsapp_link || `https://wa.me/${data.whatsapp_vendas || '5511999998888'}`;
         }
 
-        selecionarFormaPagamento('pix');
+        selecionarFormaPagamento('kiwify');
         document.getElementById("modalPix").classList.remove("hidden");
     } catch (e) {
         alert("Erro ao carregar opções de pagamento.");
@@ -664,22 +667,30 @@ async function gerarPixPlano(nome, preco) {
 }
 
 function selecionarFormaPagamento(tipo) {
-    const abas = ['pix', 'cartao', 'boleto', 'zap'];
+    const abas = ['kiwify', 'pix', 'cartao', 'boleto', 'zap'];
     abas.forEach(aba => {
         const btn = document.getElementById(`btnTab${aba.charAt(0).toUpperCase() + aba.slice(1)}`);
         const conteudo = document.getElementById(`tabConteudo${aba.charAt(0).toUpperCase() + aba.slice(1)}`);
         if (btn && conteudo) {
             if (aba === tipo) {
-                btn.classList.add("bg-white", "text-emerald-700", "shadow-sm");
-                btn.classList.remove("text-slate-600");
+                if (aba === 'kiwify') {
+                    btn.className = "py-2 rounded-lg bg-emerald-600 text-white shadow-sm transition flex flex-col items-center justify-center space-y-0.5";
+                } else {
+                    btn.className = "py-2 rounded-lg bg-white text-emerald-700 shadow-sm transition flex flex-col items-center justify-center space-y-0.5";
+                }
                 conteudo.classList.remove("hidden");
             } else {
-                btn.classList.remove("bg-white", "text-emerald-700", "shadow-sm");
-                btn.classList.add("text-slate-600");
+                btn.className = "py-2 rounded-lg text-slate-600 hover:text-slate-900 transition flex flex-col items-center justify-center space-y-0.5";
                 conteudo.classList.add("hidden");
             }
         }
     });
+}
+
+function copiarKiwifyWebhook() {
+    const el = document.getElementById("kiwifyWebhookDisplay");
+    navigator.clipboard.writeText(el.innerText);
+    exibirToast("URL do Webhook Kiwify copiada com sucesso!");
 }
 
 function simularPagamentoCartao() {
@@ -729,22 +740,28 @@ async function carregarConfiguracoes() {
         if (cfg.whatsapp_instancia) document.getElementById("cfgInstancia").value = cfg.whatsapp_instancia;
         if (cfg.evolution_api_key) document.getElementById("cfgApiKey").value = cfg.evolution_api_key;
         
-        // Dados do PIX e Formas de Pagamento do Luciano
+        // Dados do PIX, Kiwify e Formas de Pagamento do Luciano
         const chavePix = cfg.chave_pix || "luciano@conciliazap.com.br";
         const nomeRecebedor = cfg.nome_recebedor || "Luciano";
         const cidadeRecebedor = cfg.cidade_recebedor || "SAO PAULO";
         const linkCartao = cfg.link_cartao || "https://mpago.la/pos/conciliazap";
+        const linkKiwify = cfg.link_kiwify || "https://pay.kiwify.com.br/conciliazap";
         const whatsVendas = cfg.whatsapp_vendas || "5511999998888";
 
         if (document.getElementById("cfgChavePix")) document.getElementById("cfgChavePix").value = chavePix;
         if (document.getElementById("cfgNomeRecebedor")) document.getElementById("cfgNomeRecebedor").value = nomeRecebedor;
         if (document.getElementById("cfgCidadeRecebedor")) document.getElementById("cfgCidadeRecebedor").value = cidadeRecebedor;
         if (document.getElementById("cfgLinkCartao")) document.getElementById("cfgLinkCartao").value = linkCartao;
+        if (document.getElementById("cfgLinkKiwify")) document.getElementById("cfgLinkKiwify").value = linkKiwify;
         if (document.getElementById("cfgWhatsVendas")) document.getElementById("cfgWhatsVendas").value = whatsVendas;
+
+        if (document.getElementById("kiwifyWebhookDisplay")) {
+            document.getElementById("kiwifyWebhookDisplay").innerText = `${window.location.origin}/api/webhook/kiwify`;
+        }
 
         const infoPix = document.getElementById("infoPixDisplay");
         if (infoPix) {
-            infoPix.innerHTML = `<strong class="text-emerald-950">${nomeRecebedor}</strong> • Chave: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">${chavePix}</span> (${cidadeRecebedor})`;
+            infoPix.innerHTML = `<strong class="text-emerald-950">${nomeRecebedor}</strong> • Kiwify: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[11px]">${linkKiwify}</span> | PIX: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">${chavePix}</span>`;
         }
     } catch (e) {
         console.error("Erro ao carregar configurações:", e);
@@ -763,6 +780,7 @@ async function salvarConfiguracoes() {
         nome_recebedor: (document.getElementById("cfgNomeRecebedor")?.value || "Luciano").trim(),
         cidade_recebedor: (document.getElementById("cfgCidadeRecebedor")?.value || "SAO PAULO").trim(),
         link_cartao: (document.getElementById("cfgLinkCartao")?.value || "").trim(),
+        link_kiwify: (document.getElementById("cfgLinkKiwify")?.value || "").trim(),
         whatsapp_vendas: (document.getElementById("cfgWhatsVendas")?.value || "").trim()
     };
 
@@ -776,10 +794,10 @@ async function salvarConfiguracoes() {
         
         const infoPix = document.getElementById("infoPixDisplay");
         if (infoPix) {
-            infoPix.innerHTML = `<strong class="text-emerald-950">${payload.nome_recebedor}</strong> • Chave: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">${payload.chave_pix}</span> (${payload.cidade_recebedor})`;
+            infoPix.innerHTML = `<strong class="text-emerald-950">${payload.nome_recebedor}</strong> • Kiwify: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[11px]">${payload.link_kiwify}</span> | PIX: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">${payload.chave_pix}</span>`;
         }
 
-        exibirToast("✅ Configurações e Formas de Pagamento salvas com sucesso!");
+        exibirToast("✅ Configurações e Link Kiwify salvos com sucesso!");
     } catch (e) {
         alert("Erro ao salvar configurações.");
     }

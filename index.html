@@ -559,10 +559,30 @@
                                 </div>
                             </div>
 
+                            <!-- Kiwify Checkout Oficial -->
+                            <div class="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200 space-y-2">
+                                <span class="text-[11px] font-bold text-emerald-900 uppercase flex items-center space-x-1.5">
+                                    <span class="text-sm">🥝</span>
+                                    <span>Integração Kiwify (Checkout & Webhook 24/7)</span>
+                                </span>
+                                <div>
+                                    <label class="block font-bold text-slate-700 uppercase mb-1">Seu Link de Checkout da Kiwify (Produto / Assinatura):</label>
+                                    <input type="text" id="cfgLinkKiwify" placeholder="https://pay.kiwify.com.br/..." class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
+                                </div>
+                                <div class="space-y-1 pt-1">
+                                    <label class="block font-bold text-slate-600 uppercase text-[10px]">URL do Webhook para colar no painel da Kiwify (Notificações / Postback):</label>
+                                    <div class="flex items-center space-x-2">
+                                        <code id="kiwifyWebhookDisplay" class="bg-white border border-slate-300 px-3 py-1.5 rounded-lg text-emerald-700 font-mono text-xs flex-1 truncate">https://seu-dominio.onrender.com/api/webhook/kiwify</code>
+                                        <button onclick="copiarKiwifyWebhook()" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-xs transition">Copiar</button>
+                                    </div>
+                                    <p class="text-[10px] text-slate-500">Ao cadastrar esta URL nos Webhooks da Kiwify, os condomínios que pagarem terão o plano liberado automaticamente!</p>
+                                </div>
+                            </div>
+
                             <!-- Cartão e WhatsApp Comercial -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block font-bold text-slate-700 uppercase mb-1">Link de Pagamento no Cartão (Mercado Pago / Asaas / Stripe):</label>
+                                    <label class="block font-bold text-slate-700 uppercase mb-1">Outro Link de Cartão (Opcional - Mercado Pago / Asaas):</label>
                                     <input type="text" id="cfgLinkCartao" placeholder="https://mpago.la/..." class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
                                 </div>
                                 <div>
@@ -841,18 +861,22 @@
             </div>
 
             <!-- Abas Seletoras de Forma de Pagamento -->
-            <div class="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-xl text-center text-xs font-bold">
-                <button id="btnTabPix" onclick="selecionarFormaPagamento('pix')" class="py-2 rounded-lg bg-white text-emerald-700 shadow-sm transition flex flex-col items-center justify-center space-y-0.5">
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-1 p-1 bg-slate-100 rounded-xl text-center text-xs font-bold">
+                <button id="btnTabKiwify" onclick="selecionarFormaPagamento('kiwify')" class="py-2 rounded-lg bg-emerald-600 text-white shadow-sm transition flex flex-col items-center justify-center space-y-0.5">
+                    <span class="text-sm">🥝</span>
+                    <span class="text-[10px]">Kiwify Oficial</span>
+                </button>
+                <button id="btnTabPix" onclick="selecionarFormaPagamento('pix')" class="py-2 rounded-lg text-slate-600 hover:text-slate-900 transition flex flex-col items-center justify-center space-y-0.5">
                     <i class="fa-solid fa-qrcode text-sm"></i>
-                    <span class="text-[10px]">PIX Instantâneo</span>
+                    <span class="text-[10px]">PIX Direto</span>
                 </button>
                 <button id="btnTabCartao" onclick="selecionarFormaPagamento('cartao')" class="py-2 rounded-lg text-slate-600 hover:text-slate-900 transition flex flex-col items-center justify-center space-y-0.5">
                     <i class="fa-solid fa-credit-card text-sm"></i>
-                    <span class="text-[10px]">Cartão de Crédito</span>
+                    <span class="text-[10px]">Cartão 12x</span>
                 </button>
                 <button id="btnTabBoleto" onclick="selecionarFormaPagamento('boleto')" class="py-2 rounded-lg text-slate-600 hover:text-slate-900 transition flex flex-col items-center justify-center space-y-0.5">
                     <i class="fa-solid fa-barcode text-sm"></i>
-                    <span class="text-[10px]">Boleto Bancário</span>
+                    <span class="text-[10px]">Boleto</span>
                 </button>
                 <button id="btnTabZap" onclick="selecionarFormaPagamento('zap')" class="py-2 rounded-lg text-slate-600 hover:text-slate-900 transition flex flex-col items-center justify-center space-y-0.5">
                     <i class="fa-brands fa-whatsapp text-sm text-emerald-600"></i>
@@ -860,8 +884,46 @@
                 </button>
             </div>
 
+            <!-- 0. Conteúdo: Kiwify Oficial -->
+            <div id="tabConteudoKiwify" class="space-y-3 text-left">
+                <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-emerald-950 text-xs flex items-center space-x-1.5">
+                            <span class="text-base">🥝</span>
+                            <span>Checkout Seguro Oficial Kiwify</span>
+                        </span>
+                        <span class="bg-emerald-200/80 text-emerald-900 text-[10px] font-black uppercase px-2 py-0.5 rounded">Recomendado</span>
+                    </div>
+                    <p class="text-emerald-800 text-[11px] leading-relaxed">
+                        Pague com proteção total ao comprador e liberação automática 24/7. Aceita PIX Instantâneo, Cartão de Crédito em até 12x e Boleto Bancário.
+                    </p>
+                </div>
+
+                <div class="space-y-2 text-xs text-slate-600 pt-1">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-bolt text-emerald-500"></i>
+                        <span><strong>Ativação Imediata:</strong> Webhook integrado libera o condomínio na hora.</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-shield-halved text-blue-500"></i>
+                        <span><strong>Garantia de 7 dias:</strong> Conforme o Código de Defesa do Consumidor.</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-receipt text-slate-500"></i>
+                        <span><strong>Faturamento Corporativo:</strong> Recibo e comprovante automático no e-mail.</span>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <a id="btnCheckoutKiwify" href="https://pay.kiwify.com.br/conciliazap" target="_blank" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-sm shadow-md hover:shadow-lg transition flex items-center justify-center space-x-2 text-center">
+                        <span>Pagar Agora na Kiwify</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    </a>
+                </div>
+            </div>
+
             <!-- 1. Conteúdo: PIX Instantâneo -->
-            <div id="tabConteudoPix" class="space-y-3 text-center">
+            <div id="tabConteudoPix" class="hidden space-y-3 text-center">
                 <div class="flex justify-center p-3 bg-slate-50 rounded-xl border border-slate-200">
                     <img id="pixModalQrImg" src="" alt="QR Code PIX" class="w-44 h-44 rounded-lg shadow-sm border border-slate-200">
                 </div>

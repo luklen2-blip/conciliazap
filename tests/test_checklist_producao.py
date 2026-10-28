@@ -260,10 +260,10 @@ class TestChecklistProducao(unittest.TestCase):
         self.assertEqual(res_conf2.json()["status"], "already_paid")
         self.assertIn("sem duplicidade", res_conf2.json()["mensagem"])
 
-        # 4. Confere se o plano foi liberado no condomínio
+        # 4. Confere se o plano foi liberado no condomínio 2
         res_condos = client.get("/api/condominios")
         condos = {c["id"]: c["plano_ativo"] for c in res_condos.json()}
-        self.assertEqual(condos[1], "pro") # Plano do condo 1
+        self.assertEqual(condos[2], "Condomínio Master / Administradoras") # Plano do condo 2
         print(" [x] 8. PIX e Cobrança: Pagamento, confirmação e idempotência sem duplicidade -> SUCESSO!")
 
 if __name__ == "__main__":
