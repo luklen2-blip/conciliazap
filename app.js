@@ -682,10 +682,17 @@ async function carregarPlanos() {
                         ${p.recursos.map(r => `<li class="flex items-center space-x-2"><i class="fa-solid fa-check text-emerald-500"></i><span>${r}</span></li>`).join("")}
                     </ul>
                 </div>
-                <button onclick="gerarPixPlano('${p.nome}', ${p.preco})" class="w-full py-2.5 rounded-xl font-bold text-xs ${idx === 1 ? 'bg-brand-600 hover:bg-brand-500 text-white shadow' : 'bg-slate-800 hover:bg-slate-700 text-white'} transition flex items-center justify-center space-x-2">
-                    <i class="fa-solid fa-qrcode"></i>
-                    <span>Assinar com PIX Instantâneo</span>
-                </button>
+                <div class="space-y-2 pt-2">
+                    <a href="https://pay.kiwify.com.br/mByEbbl" target="_blank" class="w-full py-2.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow transition flex items-center justify-center space-x-1.5 text-center">
+                        <i class="fa-solid fa-credit-card"></i>
+                        <span>Pagar na Kiwify (Cartão/PIX/Boleto)</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                    </a>
+                    <button onclick="gerarPixPlano('${p.nome}', ${p.preco})" class="w-full py-2 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-qrcode text-emerald-600"></i>
+                        <span>Ou Ver QR Code & PIX Copia-e-Cola</span>
+                    </button>
+                </div>
             </div>
         `).join("");
     } catch (e) {

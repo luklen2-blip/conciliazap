@@ -62,7 +62,12 @@
             </div>
 
             <!-- Health Status & Quick Action -->
-            <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <a href="https://pay.kiwify.com.br/mByEbbl" target="_blank" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow transition flex items-center space-x-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-credit-card text-xs"></i>
+                    <span>🥝 Pagar Kiwify (R$ 199)</span>
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                </a>
                 <div id="subscriptionBadge" onclick="trocarAba('planos')" class="cursor-pointer flex items-center space-x-2 text-xs bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700 hover:border-slate-500 transition">
                     <span id="subDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                     <span class="text-slate-200 font-bold" id="subBadgeText">Assinatura Ativa (Carregando...)</span>
@@ -801,28 +806,33 @@
                 <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between hover:border-brand-500/50 transition">
                     <div class="space-y-3">
                         <div class="flex items-center justify-between">
-                            <span class="w-8 h-8 rounded-lg bg-brand-100 text-brand-700 font-black text-sm flex items-center justify-center">06</span>
-                            <span class="text-[10px] font-bold uppercase text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">Recebimentos (Luciano)</span>
+                            <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 font-black text-sm flex items-center justify-center">06</span>
+                            <span class="text-[10px] font-bold uppercase text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Kiwify & PIX Automático</span>
                         </div>
                         <h3 class="font-bold text-slate-900 text-sm flex items-center space-x-2">
-                            <i class="fa-solid fa-qrcode text-brand-600"></i>
-                            <span>Receber Mensalidades via PIX</span>
+                            <i class="fa-solid fa-credit-card text-emerald-600"></i>
+                            <span>Como o Condomínio Paga a Mensalidade</span>
                         </h3>
                         <p class="text-xs text-slate-600 leading-relaxed">
-                            Como configurar para que os condomínios paguem diretamente na sua conta bancária:
+                            O link de pagamento oficial fica disponível em todo o aplicativo para o síndico:
                         </p>
                         <ol class="text-[11px] text-slate-600 list-decimal list-inside space-y-1 pt-1">
-                            <li>Abra a aba <strong>Configurações</strong>.</li>
-                            <li>Preencha a sua <strong>Chave PIX</strong> (CPF, Celular, E-mail ou Chave Aleatória).</li>
-                            <li>Coloque o seu <strong>Nome Completo (Luciano)</strong> e Cidade.</li>
-                            <li>Clique em <strong>Salvar Alterações</strong>.</li>
-                            <li>Todos os planos assinados na aba <strong>Planos SaaS</strong> gerarão QR Code dinâmico do Banco Central apontando para você!</li>
+                            <li>O síndico clica no botão <strong>🥝 Pagar Kiwify (R$ 199)</strong> no topo ou na aba <strong>Planos</strong>.</li>
+                            <li>Ele escolhe pagar por <strong>Cartão em até 12x</strong>, <strong>PIX</strong> ou <strong>Boleto</strong>.</li>
+                            <li>Assim que o pagamento for concluído na Kiwify, o webhook oficial libera o sistema por <strong>30 dias corridos</strong> na hora!</li>
+                            <li>Passados 30 dias sem renovação, o sistema avisa no WhatsApp e no painel com o link para renovar.</li>
                         </ol>
                     </div>
-                    <button onclick="trocarAba('configuracoes')" class="w-full py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold text-xs shadow transition flex items-center justify-center space-x-1.5">
-                        <i class="fa-solid fa-hand-holding-dollar"></i>
-                        <span>Configurar Minha Chave PIX</span>
-                    </button>
+                    <div class="space-y-1.5 pt-2">
+                        <a href="https://pay.kiwify.com.br/mByEbbl" target="_blank" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs shadow transition flex items-center justify-center space-x-1.5 text-center">
+                            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                            <span>Abrir Link Kiwify (pay.kiwify.com.br/mByEbbl)</span>
+                        </a>
+                        <button onclick="trocarAba('planos')" class="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs transition flex items-center justify-center space-x-1">
+                            <i class="fa-solid fa-qrcode text-emerald-600"></i>
+                            <span>Ver Aba de Planos no App</span>
+                        </button>
+                    </div>
                 </div>
 
             </div>
