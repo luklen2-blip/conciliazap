@@ -1,4 +1,18 @@
 // ConciliaZap 24/7 - Core Application Logic
+
+// --- UTILITÁRIO UNIVERSAL DE SANITIZAÇÃO XSS (OWASP TOP 10) ---
+function escapeHtml(text) {
+    if (text === null || text === undefined) return "";
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+function formatarTextoZap(text) {
+    if (!text) return "";
+    // Transforma *negrito* em <strong>negrito</strong> com sanitização anti-XSS
+    return escapeHtml(text).replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+}
+
 let ocorrenciasCache = [];
 let filtroOcorrenciasAtual = "Todas";
 let ocorrenciaEmModeracaoId = null;
@@ -209,11 +223,11 @@ function renderizarOcorrencias() {
                     <div class="flex items-center space-x-2">
                         <span class="font-black text-slate-900 text-sm">Ocorrência #${String(oc.id).padStart(4, '0')}</span>
                         ${statusBadge}
-                        <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium">${oc.categoria}</span>
+                        <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium">${escapeHtml(oc.categoria)}</span>
                     </div>
                     <div class="text-[11px] text-slate-400 flex items-center space-x-1">
                         <i class="fa-regular fa-clock"></i>
-                        <span>${oc.data_hora}</span>
+                        <span>${escapeHtml(oc.data_hora)}</span>
                     </div>
                 </div>
 
@@ -222,7 +236,7 @@ function renderizarOcorrencias() {
                     <div class="md:col-span-4 p-3 bg-slate-50 rounded-xl space-y-2 border border-slate-200/60">
                         <div>
                             <span class="text-[10px] uppercase font-bold text-slate-400 block">Unidade Notificada (Infrator):</span>
-                            <span class="font-extrabold text-sm text-slate-900">Apartamento ${oc.apartamento_alvo} - Bloco ${oc.bloco_alvo}</span>
+                            <span class="font-extrabold text-sm text-slate-900">Apartamento ${escapeHtml(oc.apartamento_alvo)} - Bloco ${escapeHtml(oc.bloco_alvo)}</span>
                             <div class="mt-1">${reincidenciaBadge}</div>
                         </div>
                         <div class="pt-2 border-t border-slate-200">
@@ -230,7 +244,7 @@ function renderizarOcorrencias() {
                                 <span>Denunciante (Sigiloso):</span>
                                 <i class="fa-solid fa-lock text-slate-400 text-[9px]" title="Apenas o síndico tem acesso à identidade"></i>
                             </span>
-                            <span class="font-semibold text-slate-700">${oc.denunciante_nome} (Ap ${oc.denunciante_ap}-${oc.denunciante_bloco})</span>
+                            <span class="font-semibold text-slate-700">${escapeHtml(oc.denunciante_nome)} (Ap ${escapeHtml(oc.denunciante_ap)}-${escapeHtml(oc.denunciante_bloco)})</span>
                         </div>
                     </div>
 
@@ -239,14 +253,14 @@ function renderizarOcorrencias() {
                         <div class="space-y-1.5">
                             <span class="text-[10px] uppercase font-bold text-slate-400 block">Relato Registrado via WhatsApp:</span>
                             <p class="text-slate-800 text-xs bg-amber-50/50 p-2.5 rounded-lg border border-amber-200/50 italic">
-                                "${oc.descricao}"
+                                "${escapeHtml(oc.descricao)}"
                             </p>
                         </div>
 
                         ${oc.decisao_sindico ? `
                             <div class="p-2 bg-slate-100 rounded-lg text-slate-700 text-[11px]">
-                                <strong>Parecer do Síndico:</strong> ${oc.decisao_sindico} • 
-                                <span class="font-bold text-brand-700">Sanção: ${oc.penalidade}</span>
+                                <strong>Parecer do Síndico:</strong> ${escapeHtml(oc.decisao_sindico)} • 
+                                <span class="font-bold text-brand-700">Sanção: ${escapeHtml(oc.penalidade)}</span>
                                 ${oc.valor_multa > 0 ? `<span class="text-red-600 font-bold ml-1">(R$ ${Number(oc.valor_multa).toFixed(2)})</span>` : ''}
                             </div>
                         ` : ''}
@@ -440,13 +454,13 @@ async function carregarMoradores() {
         tbody.innerHTML = moradores.map(m => `
             <tr class="hover:bg-slate-50 transition">
                 <td class="p-3 font-bold text-slate-900">
-                    <span class="bg-slate-100 text-slate-800 px-2 py-1 rounded">Ap ${m.apartamento} - Bl ${m.bloco}</span>
+                    <span class="bg-slate-100 text-slate-800 px-2 py-1 rounded">Ap ${escapeHtml(m.apartamento)} - Bl ${escapeHtml(m.bloco)}</span>
                 </td>
-                <td class="p-3 font-semibold text-slate-800">${m.nome}</td>
-                <td class="p-3 font-mono text-slate-600">${m.telefone}</td>
+                <td class="p-3 font-semibold text-slate-800">${escapeHtml(m.nome)}</td>
+                <td class="p-3 font-mono text-slate-600">${escapeHtml(m.telefone)}</td>
                 <td class="p-3">
                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${m.tipo === 'sindico' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'}">
-                        ${m.tipo.toUpperCase()}
+                        ${escapeHtml((m.tipo || '').toUpperCase())}
                     </span>
                 </td>
                 <td class="p-3 text-right">
@@ -581,9 +595,9 @@ async function carregarReservas() {
         container.innerHTML = reservas.map(r => `
             <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
                 <div>
-                    <span class="font-extrabold text-slate-900 block">${r.area}</span>
-                    <span class="text-slate-500">${r.data_reserva} • ${r.periodo}</span>
-                    <span class="block text-[11px] text-indigo-700 font-medium">Reservado por: ${r.morador_nome} (Ap ${r.apartamento}-${r.bloco})</span>
+                    <span class="font-extrabold text-slate-900 block">${escapeHtml(r.area)}</span>
+                    <span class="text-slate-500">${escapeHtml(r.data_reserva)} • ${escapeHtml(r.periodo)}</span>
+                    <span class="block text-[11px] text-indigo-700 font-medium">Reservado por: ${escapeHtml(r.morador_nome)} (Ap ${escapeHtml(r.apartamento)}-${escapeHtml(r.bloco)})</span>
                 </div>
                 <button onclick="cancelarReserva(${r.id})" class="text-red-500 hover:text-red-700 p-1" title="Cancelar">
                     <i class="fa-solid fa-xmark"></i>
@@ -617,10 +631,10 @@ async function carregarAchados() {
         container.innerHTML = achados.map(a => `
             <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
                 <div>
-                    <span class="font-bold text-slate-900 block">${a.item}</span>
-                    <span class="text-slate-500">Local: ${a.local_encontrado}</span>
+                    <span class="font-bold text-slate-900 block">${escapeHtml(a.item)}</span>
+                    <span class="text-slate-500">Local: ${escapeHtml(a.local_encontrado)}</span>
                     <span class="block text-[10px] ${a.status === 'Disponível' ? 'text-amber-600 font-bold' : 'text-emerald-600'}">
-                        Status: ${a.status} ${a.devolvido_para ? `(Devolvido para ${a.devolvido_para})` : ''}
+                        Status: ${escapeHtml(a.status)} ${a.devolvido_para ? `(Devolvido para ${escapeHtml(a.devolvido_para)})` : ''}
                     </span>
                 </div>
                 ${a.status === 'Disponível' ? `
@@ -811,7 +825,7 @@ async function carregarConfiguracoes() {
 
         const infoPix = document.getElementById("infoPixDisplay");
         if (infoPix) {
-            infoPix.innerHTML = `<strong class="text-emerald-950">${nomeRecebedor}</strong> • Kiwify: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[11px]">${linkKiwify}</span> | PIX: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">${chavePix}</span>`;
+            infoPix.innerHTML = `<strong class="text-emerald-950">${escapeHtml(nomeRecebedor)}</strong> • Kiwify: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[11px]">${escapeHtml(linkKiwify)}</span> | PIX: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">${escapeHtml(chavePix)}</span>`;
         }
     } catch (e) {
         console.error("Erro ao carregar configurações:", e);
@@ -844,7 +858,7 @@ async function salvarConfiguracoes() {
         
         const infoPix = document.getElementById("infoPixDisplay");
         if (infoPix) {
-            infoPix.innerHTML = `<strong class="text-emerald-950">${payload.nome_recebedor}</strong> • Kiwify: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[11px]">${payload.link_kiwify}</span> | PIX: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">${payload.chave_pix}</span>`;
+            infoPix.innerHTML = `<strong class="text-emerald-950">${escapeHtml(payload.nome_recebedor)}</strong> • Kiwify: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[11px]">${escapeHtml(payload.link_kiwify)}</span> | PIX: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">${escapeHtml(payload.chave_pix)}</span>`;
         }
 
         exibirToast("✅ Configurações e Link Kiwify salvos com sucesso!");
@@ -863,15 +877,4 @@ function exibirToast(msg) {
     setTimeout(() => {
         toast.classList.add("translate-y-20", "opacity-0");
     }, 4000);
-}
-
-function escapeHtml(text) {
-    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-    return text.replace(/[&<>"']/g, m => map[m]);
-}
-
-function formatarTextoZap(text) {
-    if (!text) return "";
-    // Transforma *negrito* em <strong>negrito</strong>
-    return escapeHtml(text).replace(/\*(.*?)\*/g, '<strong>$1</strong>');
 }

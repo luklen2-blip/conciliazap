@@ -217,6 +217,58 @@ class TestConciliaZapCompleto(unittest.TestCase):
         self.assertEqual(res_status_pos.json()["dias_restantes"], 30)
         print(" [PASS] 11. Paywall e Ciclo Mensal (Liberado por 30 dias com pagamento / Bloqueio sem pagamento) validado com sucesso!")
 
+    def test_12_auditoria_seguranca_owasp(self):
+        """Valida cabeçalhos de segurança OWASP, sanitização XSS e bounds validation."""
+        # 1. Cabeçalhos de Segurança Obrigatórios
+        res_health = client.get("/api/health")
+        self.assertEqual(res_health.status_code, 200)
+        self.assertEqual(res_health.headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertEqual(res_health.headers.get("X-Frame-Options"), "SAMEORIGIN")
+        self.assertEqual(res_health.headers.get("X-XSS-Protection"), "1; mode=block")
+        self.assertEqual(res_health.headers.get("Referrer-Policy"), "strict-origin-when-cross-origin")
+        self.assertIn("camera=()", res_health.headers.get("Permissions-Policy", ""))
+
+        # 2. Input Validation (Rejeição de entradas maliciosas/inválidas)
+        res_multa_invalida = client.post("/api/ocorrencias/1/moderar", json={
+            "status": "Aprovada",
+            "penalidade": "Multa",
+            "valor_multa": -50.0 # Valor negativo proibido
+        })
+        self.assertEqual(res_multa_invalida.status_code, 400)
+
+        res_status_invalido = client.post("/api/ocorrencias/1/moderar", json={
+            "status": "STATUS_HACKEADO",
+            "penalidade": "Multa",
+            "valor_multa": 100.0
+        })
+        self.assertEqual(res_status_invalido.status_code, 400)
+
+        res_pix_invalido = client.post("/api/pix/gerar", json={
+            "plano_nome": "Condomínio Pro",
+            "valor": -10.0 # Valor negativo proibido
+        })
+        self.assertEqual(res_pix_invalido.status_code, 400)
+
+        # 3. Prevenção de XSS no Laudo HTML
+        res_mod_xss = client.post("/api/ocorrencias/1/moderar", json={
+            "status": "Aprovada",
+            "motivo": "<script>alert('xss-parecer')</script>",
+            "penalidade": "Advertência Formal",
+            "valor_multa": 0.0
+        })
+        self.assertEqual(res_mod_xss.status_code, 200)
+
+        res_laudo = client.get("/api/ocorrencias/1/laudo-html")
+        self.assertEqual(res_laudo.status_code, 200)
+        self.assertNotIn("<script>alert('xss-parecer')</script>", res_laudo.text)
+        self.assertIn("&lt;script&gt;alert(&#x27;xss-parecer&#x27;)&lt;/script&gt;", res_laudo.text)
+
+        # 4. Auditoria LGPD e Canal DPO
+        res_priv = client.get("/privacidade")
+        self.assertIn("dpo@conciliazap.com.br", res_priv.text)
+        self.assertIn("Art. 18 da LGPD", res_priv.text)
+        print(" [PASS] 12. Auditoria de Segurança OWASP (Headers, Bounds Validation, Anti-XSS e DPO LGPD) homologada com sucesso!")
+
 
 
 if __name__ == "__main__":

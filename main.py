@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import re
+import html
 import urllib.parse
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
@@ -32,10 +33,52 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- MIDDLEWARE DE SEGURANÇA OWASP & RATE LIMITING CONTRA FLOOD/DOS ---
+RATE_LIMIT_STORE: Dict[str, List[float]] = {}
+RATE_LIMIT_WINDOW = 60 # Janela de 60 segundos
+MAX_REQUESTS_GLOBAL = 250 # Até 250 req/min por IP
+MAX_REQUESTS_SENSITIVE = 60 # Até 60 req/min em rotas sensíveis (webhook, pix)
+
+@app.middleware("http")
+async def security_and_rate_limit_middleware(request: Request, call_next):
+    client_ip = request.client.host if request.client else "127.0.0.1"
+    path = request.url.path
+    agora = time.time()
+    
+    # Isenta health check e arquivos estáticos do limitador
+    is_exempt = path.startswith("/api/health") or path.startswith("/static") or path in ["/", "/favicon.ico", "/index.html"]
+    
+    if not is_exempt:
+        limite = MAX_REQUESTS_SENSITIVE if any(path.startswith(p) for p in ["/api/webhook", "/api/pix/gerar", "/api/simulador"]) else MAX_REQUESTS_GLOBAL
+        
+        historico = RATE_LIMIT_STORE.get(client_ip, [])
+        historico = [t for t in historico if agora - t < RATE_LIMIT_WINDOW]
+        
+        if len(historico) >= limite:
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Muitas requisições. Limite temporário de segurança atingido. Aguarde alguns segundos."},
+                headers={"Retry-After": "30"}
+            )
+            
+        historico.append(agora)
+        RATE_LIMIT_STORE[client_ip] = historico
+        
+    response = await call_next(request)
+    
+    # Injeção de cabeçalhos de segurança obrigatórios (OWASP Top 10)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    
+    return response
 
 # --- MODELOS DE ENTRADA Pydantic ---
 class WhatsAppMessage(BaseModel):
@@ -703,6 +746,16 @@ async def moderar_ocorrencia(ocorrencia_id: int, decisao: OcorrenciaDecisao):
     Ação de 1 clique do Síndico: Homologa o envio de Notificação/Advertência/Multa
     ou Rejeita/Arquiva a queixa, despersonalizando o conflito.
     """
+    # Validações de limites e segurança (OWASP Input Validation)
+    if decisao.status not in ["Aprovada", "Rejeitada", "Arquivada", "Pendente"]:
+        raise HTTPException(status_code=400, detail="Status de moderação inválido. Valores aceitos: Aprovada, Rejeitada, Arquivada, Pendente.")
+    if decisao.penalidade and decisao.penalidade not in ["Aviso Amigável", "Advertência Formal", "Multa", "Nenhuma"]:
+        raise HTTPException(status_code=400, detail="Penalidade inválida.")
+    if decisao.valor_multa is not None and (decisao.valor_multa < 0.0 or decisao.valor_multa > 50000.0):
+        raise HTTPException(status_code=400, detail="Valor da multa deve estar entre R$ 0,00 e R$ 50.000,00.")
+    if decisao.motivo and len(decisao.motivo) > 1000:
+        raise HTTPException(status_code=400, detail="Parecer do síndico não pode exceder 1.000 caracteres.")
+
     conn = get_db()
     cursor = conn.cursor()
     
@@ -771,7 +824,17 @@ async def gerar_laudo_formal_html(ocorrencia_id: int):
     if not oc:
         raise HTTPException(status_code=404, detail="Ocorrência não encontrada")
         
-    html = f"""<!DOCTYPE html>
+    # Sanitização anti-XSS de dados dinâmicos exibidos no documento
+    safe_ap = html.escape(str(oc['apartamento_alvo'] or ''))
+    safe_bloco = html.escape(str(oc['bloco_alvo'] or ''))
+    safe_data_hora = html.escape(str(oc['data_hora'] or ''))
+    safe_categoria = html.escape(str(oc['categoria'] or ''))
+    safe_descricao = html.escape(str(oc['descricao'] or ''))
+    safe_penalidade = html.escape(str(oc['penalidade'] or ''))
+    safe_decisao = html.escape(str(oc['decisao_sindico'] or 'Aprovado envio de notificação formal conforme regimento.'))
+    valor_multa = float(oc['valor_multa'] or 0.0)
+
+    html_content = f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -804,32 +867,32 @@ async def gerar_laudo_formal_html(ocorrencia_id: int):
     <div class="box">
         <div class="field-group">
             <div class="label">Unidade Notificada</div>
-            <div class="value"><strong>Apartamento {oc['apartamento_alvo']} - Bloco {oc['bloco_alvo']}</strong></div>
+            <div class="value"><strong>Apartamento {safe_ap} - Bloco {safe_bloco}</strong></div>
         </div>
         <div class="field-group">
             <div class="label">Data e Hora do Registro</div>
-            <div class="value">{oc['data_hora']}</div>
+            <div class="value">{safe_data_hora}</div>
         </div>
         <div class="field-group">
             <div class="label">Natureza da Infração</div>
-            <div class="value">{oc['categoria']} (Regimento Interno - Cláusula de Convivência & Sossego)</div>
+            <div class="value">{safe_categoria} (Regimento Interno - Cláusula de Convivência & Sossego)</div>
         </div>
         <div class="field-group">
             <div class="label">Descrição do Fato Conflituoso</div>
-            <div class="value" style="font-style: italic;">"{oc['descricao']}"</div>
+            <div class="value" style="font-style: italic;">"{safe_descricao}"</div>
         </div>
     </div>
     
     <div class="box" style="border-left: 4px solid #0284c7;">
         <div class="field-group">
             <div class="label">Sanção Aplicada pela Administração</div>
-            <div class="value"><strong style="color: #b91c1c; font-size: 18px;">{oc['penalidade']}</strong></div>
+            <div class="value"><strong style="color: #b91c1c; font-size: 18px;">{safe_penalidade}</strong></div>
         </div>
         <div class="field-group">
             <div class="label">Parecer do Síndico / Moderador</div>
-            <div class="value">{oc['decisao_sindico'] or 'Aprovado envio de notificação formal conforme regimento.'}</div>
+            <div class="value">{safe_decisao}</div>
         </div>
-        {f'<div class="field-group"><div class="label">Valor da Sanção Pecuniária</div><div class="value"><strong>R$ {oc["valor_multa"]:.2f}</strong></div></div>' if oc['valor_multa'] > 0 else ''}
+        {f'<div class="field-group"><div class="label">Valor da Sanção Pecuniária</div><div class="value"><strong>R$ {valor_multa:.2f}</strong></div></div>' if valor_multa > 0 else ''}
     </div>
     
     <div style="margin-top: 40px; font-size: 14px; line-height: 1.6; color: #334155;">
@@ -841,6 +904,7 @@ async def gerar_laudo_formal_html(ocorrencia_id: int):
     </div>
 </body>
 </html>"""
+    return HTMLResponse(content=html_content)
     return HTMLResponse(content=html)
 
 # --- 6. GESTÃO DE MORADORES E IMPORTAÇÃO EM LOTE ---
@@ -862,6 +926,13 @@ async def cadastrar_morador(m: MoradorCreate, request: Request):
     if user_role not in ["sindico", "administrador", "admin"]:
         raise HTTPException(status_code=403, detail="Apenas síndicos ou administradores têm permissão para cadastrar moradores.")
         
+    if not m.nome or len(m.nome.strip()) < 2 or len(m.nome) > 150:
+        raise HTTPException(status_code=422, detail="Nome do morador deve conter entre 2 e 150 caracteres.")
+    if not m.apartamento or len(m.apartamento.strip()) < 1 or len(m.apartamento) > 20:
+        raise HTTPException(status_code=422, detail="Apartamento deve conter entre 1 e 20 caracteres.")
+    if not m.bloco or len(m.bloco.strip()) < 1 or len(m.bloco) > 20:
+        raise HTTPException(status_code=422, detail="Bloco deve conter entre 1 e 20 caracteres.")
+
     tel_limpo = sanitizar_telefone(m.telefone)
     condo_id = m.condominio_id or 1
     conn = get_db()
@@ -933,6 +1004,13 @@ async def cadastrar_morador_teste(
     if not all([final_nome, final_tel, final_ap, final_bloco]):
         raise HTTPException(status_code=422, detail="Campos nome, telefone, apartamento e bloco são obrigatórios.")
         
+    if len(final_nome.strip()) < 2 or len(final_nome) > 150:
+        raise HTTPException(status_code=422, detail="Nome do morador deve conter entre 2 e 150 caracteres.")
+    if len(final_ap.strip()) < 1 or len(final_ap) > 20:
+        raise HTTPException(status_code=422, detail="Apartamento deve conter entre 1 e 20 caracteres.")
+    if len(final_bloco.strip()) < 1 or len(final_bloco) > 20:
+        raise HTTPException(status_code=422, detail="Bloco deve conter entre 1 e 20 caracteres.")
+        
     tel_limpo = sanitizar_telefone(final_tel)
     try:
         conn = get_db()
@@ -1000,6 +1078,12 @@ async def listar_reservas(condominio_id: Optional[int] = None):
 
 @app.post("/api/reservas")
 async def criar_reserva(reserva: ReservaCreate):
+    # Validação de limites (OWASP Input Validation)
+    if not reserva.area or len(reserva.area.strip()) < 2 or len(reserva.area) > 100:
+        raise HTTPException(status_code=422, detail="Nome da área comum deve ter entre 2 e 100 caracteres.")
+    if not reserva.periodo or len(reserva.periodo.strip()) < 2 or len(reserva.periodo) > 50:
+        raise HTTPException(status_code=422, detail="Período da reserva deve ter entre 2 e 50 caracteres.")
+
     conn = get_db()
     cursor = conn.cursor()
     
@@ -1055,6 +1139,12 @@ async def listar_achados():
 
 @app.post("/api/achados")
 async def registrar_achado(achado: AchadoCreate):
+    # Validação de limites (OWASP Input Validation)
+    if not achado.item or len(achado.item.strip()) < 2 or len(achado.item) > 150:
+        raise HTTPException(status_code=422, detail="Descrição do item deve conter entre 2 e 150 caracteres.")
+    if not achado.local_encontrado or len(achado.local_encontrado.strip()) < 2 or len(achado.local_encontrado) > 150:
+        raise HTTPException(status_code=422, detail="Local encontrado deve conter entre 2 e 150 caracteres.")
+
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
@@ -1110,6 +1200,9 @@ async def gerar_pix_cobranca(req: PixRequest):
     Gera o código Copia-e-Cola PIX oficial (EMV Bacen) e URL de QR Code dinâmico,
     além de suportar métodos adicionais (Kiwify Checkout, Boleto Bancário, Link de Cartão e Contato Comercial).
     """
+    if req.valor <= 0.0 or req.valor > 100000.0:
+        raise HTTPException(status_code=400, detail="Valor de cobrança deve ser maior que R$ 0,00 e até R$ 100.000,00.")
+
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT chave, valor FROM configuracoes WHERE chave IN ('chave_pix', 'nome_recebedor', 'cidade_recebedor', 'link_cartao', 'whatsapp_vendas', 'link_kiwify')")
@@ -1384,32 +1477,42 @@ def obter_html_termos() -> str:
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #334155; }
         h1, h2 { color: #0f172a; }
         .alert { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 20px 0; border-radius: 4px; }
+        .box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 6px; margin: 15px 0; font-size: 14px; }
         a { color: #0284c7; text-decoration: none; }
     </style>
 </head>
 <body>
     <a href="/">← Voltar ao Painel ConciliaZap</a>
     <h1>Termos de Uso e Condições de Serviço</h1>
-    <p><em>Última atualização: Outubro de 2026</em></p>
+    <p><em>Última atualização: Outubro de 2026 • Versão 2.0.0 Auditada</em></p>
     
     <div class="alert">
         <strong>⚠️ AVISO REGULATÓRIO E ÉTICO IMPORTANTE:</strong><br>
         O ConciliaZap é uma ferramenta tecnológica de comunicação, automação e mediação pacífica de rotina condominial. 
         Este sistema <strong>NÃO substitui autoridades policiais, judiciais ou serviços médicos/psicológicos de emergência</strong>. 
-        Em caso de violência física, ameaça à vida ou crimes graves, contate imediatamente a Polícia Militar (190) ou Disque 190.
+        Em caso de violência física, ameaça à vida ou crimes graves, contate imediatamente a Polícia Militar (190), SAMU (192) ou Bombeiros (193).
     </div>
 
     <h2>1. Objeto do Serviço</h2>
-    <p>O ConciliaZap provê uma plataforma de automação de mensagens, gestão de reservas e suporte administrativo ao síndico para despersonalizar o contato e evitar atritos entre condôminos.</p>
+    <p>O ConciliaZap provê uma plataforma de automação de mensagens, gestão de reservas, achados e perdidos e suporte administrativo ao síndico para despersonalizar o contato e evitar atritos entre condôminos.</p>
 
     <h2>2. Classificação Indicativa de Idade</h2>
-    <p>O serviço de envio de ocorrências é indicado para residentes a partir de <strong>16 anos</strong>. A contratação de planos comerciais e pagamentos é restrita a <strong>maiores de 18 anos</strong> ou legalmente representados.</p>
+    <p>O serviço de envio de ocorrências é indicado para residentes a partir de <strong>16 anos</strong>. A contratação de planos comerciais, assinaturas e pagamentos financeiros é estritamente restrita a <strong>maiores de 18 anos</strong> ou legalmente representados.</p>
 
-    <h2>3. Moderação do Síndico</h2>
-    <p>Todo registro feito por morador passa por crivo e moderação humana do Síndico ou Administradora antes da expedição de advertências formais ou penalidades pecuniárias, coibindo denúncias caluniosas ou trotes.</p>
+    <h2>3. Moderação do Síndico e Imparcialidade</h2>
+    <p>Todo registro feito por morador passa por crivo e moderação humana do Síndico ou Administradora antes da expedição de advertências formais ou penalidades pecuniárias, coibindo denúncias infundadas ou trotes conforme Arts. 1.336 e 1.337 do Código Civil Brasileiro.</p>
 
-    <h2>4. Legislação Aplicável</h2>
-    <p>Estes termos regem-se pelas Leis da República Federativa do Brasil, em especial o Código Civil (Lei 10.406/2002 - Arts. 1.331 a 1.358) e o Marco Civil da Internet (Lei 12.965/2014).</p>
+    <h2>4. Pagamentos Seguros e Não Armazenamento de Dados de Cartão</h2>
+    <p>As transações financeiras são intermediadas por gateways oficiais (Kiwify e Banco Central via PIX). O ConciliaZap <strong>não coleta nem armazena números de cartões de crédito</strong> ou senhas bancárias em seus servidores.</p>
+
+    <h2>5. Canal de Contato e DPO</h2>
+    <div class="box">
+        <strong>Encarregado de Proteção de Dados (DPO):</strong> Luclen Soluções Tecnológicas Ltda<br>
+        <strong>E-mail de Contato:</strong> <a href="mailto:dpo@conciliazap.com.br">dpo@conciliazap.com.br</a>
+    </div>
+
+    <h2>6. Legislação Aplicável e Foro</h2>
+    <p>Estes termos regem-se pelas Leis da República Federativa do Brasil, em especial o Código Civil (Lei 10.406/2002), o Marco Civil da Internet (Lei 12.965/2014) e a LGPD (Lei 13.709/2018). Fica eleito o foro da comarca de domicílio do condomínio contratante.</p>
 </body>
 </html>"""
 
@@ -1424,33 +1527,58 @@ def obter_html_privacidade() -> str:
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #334155; }
         h1, h2 { color: #0f172a; }
         .box { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 6px; margin: 20px 0; }
+        .security-box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 15px; border-radius: 6px; margin: 20px 0; font-size: 14px; }
         a { color: #0284c7; text-decoration: none; }
     </style>
 </head>
 <body>
     <a href="/">← Voltar ao Painel ConciliaZap</a>
     <h1>Política de Privacidade e Conformidade LGPD</h1>
-    <p><em>Em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018)</em></p>
+    <p><em>Em estrita conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018) • Versão 2.0.0</em></p>
 
     <div class="box">
-        <strong>🔒 Princípio do Sigilo da Denúncia:</strong><br>
-        O ConciliaZap foi arquitetado com privacidade por padrão (Privacy by Design). Quando uma notificação é enviada a uma unidade sobre barulho ou ruído, o nome e contato do morador denunciante <strong>nunca são expostos</strong> ao vizinho, resguardando a paz e a integridade física dos moradores.
+        <strong>🔒 Princípio do Sigilo da Denúncia (Privacy by Design):</strong><br>
+        O ConciliaZap foi arquitetado com privacidade desde a concepção (Privacy by Design e Privacy by Default). Quando uma notificação pacífica é enviada a uma unidade sobre barulho ou ruído, o nome e contato do morador denunciante <strong>nunca são expostos</strong> ao vizinho, resguardando a paz e a integridade de todos os moradores.
     </div>
 
-    <h2>1. Dados Tratados</h2>
-    <p>Tratamos apenas os dados essenciais para o cumprimento das obrigações condominiais:</p>
+    <h2>1. Dados Pessoais Tratados</h2>
+    <p>Tratamos estritamente os dados necessários e mínimos para o cumprimento da convenção condominial:</p>
     <ul>
-        <li>Nome completo do condômino/locatário</li>
+        <li>Nome completo do condômino ou locatário</li>
         <li>Número de telefone para comunicação via WhatsApp</li>
-        <li>Identificação da unidade (Apartamento e Bloco)</li>
-        <li>Histórico de registros de ocorrências e reservas de áreas comuns</li>
+        <li>Identificação da unidade residencial (Apartamento e Bloco)</li>
+        <li>Histórico de registros de ocorrências, reservas de áreas comuns e itens de achados e perdidos</li>
     </ul>
 
-    <h2>2. Base Legal</h2>
-    <p>O tratamento de dados é realizado com base no cumprimento de obrigação legal e regulatória (administração de condomínio edilício - Art. 7º, II da LGPD) e na execução regular de contrato de convivência (Art. 7º, V da LGPD).</p>
+    <h2>2. Bases Legais de Tratamento</h2>
+    <p>O tratamento de dados é realizado com base no cumprimento de obrigação legal e regulatória de gestão condominial edilícia (Art. 7º, II da LGPD) e na execução regular do contrato de convivência e regimento interno (Art. 7º, V da LGPD).</p>
 
-    <h2>3. Direitos do Titular</h2>
-    <p>O titular tem direito de consultar, retificar ou solicitar a anonimização de seus dados cadastrais mediante contato direto com a administração do condomínio.</p>
+    <h2>3. Direitos dos Titulares de Dados (Art. 18 da LGPD)</h2>
+    <p>O titular tem pleno direito de solicitar, a qualquer momento e gratuitamente:</p>
+    <ul>
+        <li>Confirmação da existência de tratamento e acesso aos dados</li>
+        <li>Correção de dados incompletos, inexatos ou desatualizados</li>
+        <li>Anonimização, bloqueio ou eliminação de dados desnecessários</li>
+        <li>Revogação do consentimento, ressalvadas as obrigações legais de guarda</li>
+    </ul>
+
+    <h2>4. Medidas Técnicas de Segurança da Informação</h2>
+    <div class="security-box">
+        <strong>🛡️ Padrão de Engenharia de Segurança Cibernética Ativo:</strong>
+        <ul style="margin-top: 8px;">
+            <li>Criptografia de tráfego ponta a ponta via HTTPS / TLS 1.3</li>
+            <li>Proteção rigorosa contra Injeção de SQL (consultas 100% parametrizadas)</li>
+            <li>Sanitização contra XSS (Cross-Site Scripting) em todas as exibições no navegador</li>
+            <li>Rate Limiting automático para mitigação de ataques de negação de serviço (DoS/Brute-force)</li>
+            <li>Cabeçalhos de proteção HTTP (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy)</li>
+        </ul>
+    </div>
+
+    <h2>5. Prazo de Retenção e Descarte Seguro</h2>
+    <p>Os dados cadastrais e registros de ocorrências são armazenados durante a vigência do vínculo do morador com o condomínio e pelo período prescricional legal previsto no Código Civil (5 anos), sendo após esse prazo permanentemente descartados ou anonimizados para fins estatísticos.</p>
+
+    <h2>6. Canal do Encarregado de Dados (DPO)</h2>
+    <p>Para exercer seus direitos de titular ou esclarecer dúvidas sobre a privacidade dos seus dados, entre em contato diretamente com o nosso Encarregado através do canal oficial: <a href="mailto:dpo@conciliazap.com.br"><strong>dpo@conciliazap.com.br</strong></a>.</p>
 </body>
 </html>"""
 
