@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import re
+import urllib.parse
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Body, Request, Query
@@ -964,16 +965,18 @@ async def listar_planos():
 async def gerar_pix_cobranca(req: PixRequest):
     """
     Gera o código Copia-e-Cola PIX oficial (EMV Bacen) e URL de QR Code dinâmico,
-    utilizando a chave configurada por Luciano e registrando a cobrança no banco com status PENDENTE.
+    além de suportar métodos adicionais (Boleto Bancário, Link de Cartão e Contato Comercial).
     """
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT chave, valor FROM configuracoes WHERE chave IN ('chave_pix', 'nome_recebedor', 'cidade_recebedor')")
+    cursor.execute("SELECT chave, valor FROM configuracoes WHERE chave IN ('chave_pix', 'nome_recebedor', 'cidade_recebedor', 'link_cartao', 'whatsapp_vendas')")
     configs = {r["chave"]: r["valor"] for r in cursor.fetchall()}
     
     chave_final = configs.get("chave_pix") or req.chave_pix or "luciano@conciliazap.com.br"
     nome_final = configs.get("nome_recebedor") or req.nome_recebedor or "Luciano"
     cidade_final = configs.get("cidade_recebedor") or req.cidade or "SAO PAULO"
+    link_cartao = configs.get("link_cartao") or "https://mpago.la/pos/conciliazap"
+    whatsapp_vendas = configs.get("whatsapp_vendas") or "5511999998888"
     
     txid = f"CONCILIA{int(time.time())}{os.urandom(2).hex().upper()}"
     payload_emv = pix.gerar_pix_copia_e_cola(
@@ -985,6 +988,10 @@ async def gerar_pix_cobranca(req: PixRequest):
     )
     qr_code_url = pix.gerar_url_qr_code(payload_emv)
     condo_id = req.condominio_id or 1
+    
+    boleto_linha = pix.gerar_linha_digitavel_boleto(req.valor, txid)
+    msg_zap = f"Olá Luciano! Gostaria de contratar a assinatura do plano *{req.plano_nome}* (R$ {req.valor:.2f}) para o meu condomínio."
+    zap_url = f"https://wa.me/{whatsapp_vendas}?text={urllib.parse.quote(msg_zap)}"
     
     cursor.execute("""
     INSERT INTO cobrancas_pix (txid, condominio_id, plano, valor, status, pix_copia_e_cola, qr_code_url)
@@ -1001,7 +1008,12 @@ async def gerar_pix_cobranca(req: PixRequest):
         "pix_copia_e_cola": payload_emv,
         "qr_code_url": qr_code_url,
         "chave_pix": chave_final,
-        "nome_recebedor": nome_final
+        "nome_recebedor": nome_final,
+        "cidade": cidade_final,
+        "boleto_linha": boleto_linha,
+        "link_cartao": link_cartao,
+        "whatsapp_vendas": whatsapp_vendas,
+        "whatsapp_link": zap_url
     }
 
 @app.post("/api/pix/confirmar")

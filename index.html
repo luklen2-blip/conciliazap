@@ -523,32 +523,51 @@
                         </div>
                     </div>
 
-                    <!-- Configuração da Conta PIX para Recebimentos do Luciano -->
+                    <!-- Configuração das Formas de Pagamento e Recebimento do Luciano -->
                     <div class="pt-4 border-t border-slate-200">
                         <div class="flex items-center space-x-2 mb-2">
                             <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm font-bold">
-                                <i class="fa-solid fa-qrcode"></i>
+                                <i class="fa-solid fa-credit-card"></i>
                             </span>
                             <div>
-                                <h3 class="font-bold text-slate-900 text-sm">Sua Conta PIX para Recebimento de Assinaturas (Luciano)</h3>
-                                <p class="text-[11px] text-slate-500">Configure para onde os condomínios pagarão as mensalidades via PIX oficial do Banco Central.</p>
+                                <h3 class="font-bold text-slate-900 text-sm">Formas de Pagamento & Recebimento das Assinaturas (Conta do Luciano)</h3>
+                                <p class="text-[11px] text-slate-500">Configure seus dados para receber dos condomínios por PIX, Cartão de Crédito, Boleto ou negociação no WhatsApp.</p>
                             </div>
                         </div>
 
                         <div class="space-y-3 pt-2">
-                            <div>
-                                <label class="block font-bold text-slate-700 uppercase mb-1">Sua Chave PIX (CPF, CNPJ, Celular, E-mail ou Chave Aleatória):</label>
-                                <input type="text" id="cfgChavePix" placeholder="Ex: luciano@exemplo.com ou 11999999999" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
+                            <!-- PIX -->
+                            <div class="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 space-y-3">
+                                <span class="text-[11px] font-bold text-emerald-800 uppercase flex items-center space-x-1.5">
+                                    <i class="fa-solid fa-qrcode"></i>
+                                    <span>1. Dados do PIX Instantâneo Oficial (Bacen)</span>
+                                </span>
+                                <div>
+                                    <label class="block font-bold text-slate-700 uppercase mb-1">Sua Chave PIX (CPF, CNPJ, Celular, E-mail ou Aleatória):</label>
+                                    <input type="text" id="cfgChavePix" placeholder="Ex: luciano@exemplo.com ou 11999999999" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block font-bold text-slate-700 uppercase mb-1">Nome do Titular da Conta (Recebedor):</label>
+                                        <input type="text" id="cfgNomeRecebedor" placeholder="Ex: Luciano" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-semibold">
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold text-slate-700 uppercase mb-1">Cidade da Conta Bancária:</label>
+                                        <input type="text" id="cfgCidadeRecebedor" placeholder="Ex: SAO PAULO" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 uppercase font-semibold">
+                                    </div>
+                                </div>
                             </div>
 
+                            <!-- Cartão e WhatsApp Comercial -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block font-bold text-slate-700 uppercase mb-1">Nome do Titular da Conta (Recebedor):</label>
-                                    <input type="text" id="cfgNomeRecebedor" placeholder="Ex: Luciano" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-semibold">
+                                    <label class="block font-bold text-slate-700 uppercase mb-1">Link de Pagamento no Cartão (Mercado Pago / Asaas / Stripe):</label>
+                                    <input type="text" id="cfgLinkCartao" placeholder="https://mpago.la/..." class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
                                 </div>
                                 <div>
-                                    <label class="block font-bold text-slate-700 uppercase mb-1">Cidade da Conta Bancária:</label>
-                                    <input type="text" id="cfgCidadeRecebedor" placeholder="Ex: SAO PAULO" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 uppercase font-semibold">
+                                    <label class="block font-bold text-slate-700 uppercase mb-1">Seu WhatsApp Comercial para Vendas / Contratos:</label>
+                                    <input type="text" id="cfgWhatsVendas" placeholder="Ex: 5511999998888" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
                                 </div>
                             </div>
                         </div>
@@ -802,38 +821,149 @@
         </div>
     </div>
 
-    <!-- Modal de Checkout PIX EMV (Bacen) -->
+    <!-- Modal de Checkout & Formas de Pagamento -->
     <div id="modalPix" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 text-center">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <!-- Header do Modal -->
             <div class="flex justify-between items-center pb-2 border-b border-slate-100">
-                <span class="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">PIX Banco Central Oficial</span>
-                <button onclick="fecharModalPix()" class="text-slate-400 hover:text-slate-600 text-xl">×</button>
+                <span class="text-xs font-bold uppercase tracking-wider text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-full flex items-center space-x-1">
+                    <i class="fa-solid fa-lock text-[10px]"></i>
+                    <span>Checkout Seguro • Formas de Pagamento</span>
+                </span>
+                <button onclick="fecharModalPix()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">×</button>
             </div>
 
-            <div class="space-y-1">
+            <!-- Resumo do Plano -->
+            <div class="text-center space-y-1">
                 <h3 class="font-extrabold text-lg text-slate-900" id="pixModalPlanoTitulo">Condomínio Pro</h3>
                 <p class="text-2xl font-black text-brand-600" id="pixModalValor">R$ 199,00</p>
-                <p class="text-xs text-slate-400">Ativação instantânea 24/7 sem taxas de intermediários</p>
+                <p class="text-xs text-slate-400">Escolha como prefere efetuar o pagamento da assinatura:</p>
             </div>
 
-            <!-- Imagem QR Code Dinâmica -->
-            <div class="flex justify-center p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <img id="pixModalQrImg" src="" alt="QR Code PIX" class="w-48 h-48 rounded-lg shadow-sm border border-slate-200">
+            <!-- Abas Seletoras de Forma de Pagamento -->
+            <div class="grid grid-cols-4 gap-1 p-1 bg-slate-100 rounded-xl text-center text-xs font-bold">
+                <button id="btnTabPix" onclick="selecionarFormaPagamento('pix')" class="py-2 rounded-lg bg-white text-emerald-700 shadow-sm transition flex flex-col items-center justify-center space-y-0.5">
+                    <i class="fa-solid fa-qrcode text-sm"></i>
+                    <span class="text-[10px]">PIX Instantâneo</span>
+                </button>
+                <button id="btnTabCartao" onclick="selecionarFormaPagamento('cartao')" class="py-2 rounded-lg text-slate-600 hover:text-slate-900 transition flex flex-col items-center justify-center space-y-0.5">
+                    <i class="fa-solid fa-credit-card text-sm"></i>
+                    <span class="text-[10px]">Cartão de Crédito</span>
+                </button>
+                <button id="btnTabBoleto" onclick="selecionarFormaPagamento('boleto')" class="py-2 rounded-lg text-slate-600 hover:text-slate-900 transition flex flex-col items-center justify-center space-y-0.5">
+                    <i class="fa-solid fa-barcode text-sm"></i>
+                    <span class="text-[10px]">Boleto Bancário</span>
+                </button>
+                <button id="btnTabZap" onclick="selecionarFormaPagamento('zap')" class="py-2 rounded-lg text-slate-600 hover:text-slate-900 transition flex flex-col items-center justify-center space-y-0.5">
+                    <i class="fa-brands fa-whatsapp text-sm text-emerald-600"></i>
+                    <span class="text-[10px]">WhatsApp</span>
+                </button>
             </div>
 
-            <!-- Código Copia e Cola -->
-            <div class="text-left space-y-1">
-                <label class="block text-[11px] font-bold text-slate-600 uppercase">PIX Copia e Cola (EMV):</label>
-                <div class="flex items-center space-x-1">
-                    <input type="text" id="pixModalCopiaCola" readonly class="w-full bg-slate-100 border border-slate-300 rounded-lg p-2 font-mono text-[11px] text-slate-700">
-                    <button onclick="copiarPixPayload()" class="px-3 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1">
-                        <i class="fa-regular fa-copy"></i>
-                        <span>Copiar</span>
+            <!-- 1. Conteúdo: PIX Instantâneo -->
+            <div id="tabConteudoPix" class="space-y-3 text-center">
+                <div class="flex justify-center p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <img id="pixModalQrImg" src="" alt="QR Code PIX" class="w-44 h-44 rounded-lg shadow-sm border border-slate-200">
+                </div>
+
+                <div class="text-left space-y-1">
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase">PIX Copia e Cola (EMV Banco Central):</label>
+                    <div class="flex items-center space-x-1">
+                        <input type="text" id="pixModalCopiaCola" readonly class="w-full bg-slate-100 border border-slate-300 rounded-lg p-2 font-mono text-[11px] text-slate-700">
+                        <button onclick="copiarPixPayload()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Copiar</span>
+                        </button>
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-400">Escaneie no app do seu banco ou copie o código acima. Ativação imediata sem taxas.</p>
+            </div>
+
+            <!-- 2. Conteúdo: Cartão de Crédito -->
+            <div id="tabConteudoCartao" class="hidden space-y-3 text-left">
+                <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-xs">
+                    <div>
+                        <span class="font-bold text-blue-900 block">Pagamento Seguro em até 12x</span>
+                        <span class="text-blue-700 text-[11px]">Aceitamos Visa, Mastercard, Elo, Hipercard e American Express.</span>
+                    </div>
+                    <i class="fa-solid fa-shield-halved text-blue-600 text-xl"></i>
+                </div>
+
+                <div class="space-y-2 text-xs">
+                    <div>
+                        <label class="block font-bold text-slate-600 uppercase mb-1 text-[11px]">Número do Cartão:</label>
+                        <input type="text" placeholder="0000 0000 0000 0000" class="w-full border rounded-lg p-2 font-mono">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block font-bold text-slate-600 uppercase mb-1 text-[11px]">Validade (MM/AA):</label>
+                            <input type="text" placeholder="12/28" class="w-full border rounded-lg p-2 text-center font-mono">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-600 uppercase mb-1 text-[11px]">CVV / Cód. Segurança:</label>
+                            <input type="password" placeholder="123" maxlength="4" class="w-full border rounded-lg p-2 text-center font-mono">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-600 uppercase mb-1 text-[11px]">Nome Impresso no Cartão:</label>
+                        <input type="text" placeholder="NOME DO TITULAR" class="w-full border rounded-lg p-2 uppercase">
+                    </div>
+                </div>
+
+                <div class="pt-2 flex flex-col sm:flex-row gap-2">
+                    <button onclick="simularPagamentoCartao()" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow transition flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-lock"></i>
+                        <span>Confirmar Pagamento com Cartão</span>
                     </button>
+                    <a id="btnLinkCartaoExterno" href="https://mpago.la/pos/conciliazap" target="_blank" class="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition text-center whitespace-nowrap">
+                        <i class="fa-solid fa-up-right-from-square"></i> Checkout Direto
+                    </a>
                 </div>
             </div>
 
-            <p class="text-[11px] text-slate-400">Escaneie no app do seu banco ou copie o código acima.</p>
+            <!-- 3. Conteúdo: Boleto Bancário -->
+            <div id="tabConteudoBoleto" class="hidden space-y-3 text-left">
+                <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs space-y-1">
+                    <span class="font-bold text-amber-900 block flex items-center space-x-1">
+                        <i class="fa-solid fa-file-invoice"></i>
+                        <span>Boleto Bancário Corporativo (Febraban)</span>
+                    </span>
+                    <p class="text-amber-700 text-[11px]">Vencimento em 3 dias úteis. Ideal para prestação de contas da administradora.</p>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase">Linha Digitável do Boleto:</label>
+                    <div class="flex items-center space-x-1">
+                        <input type="text" id="modalBoletoLinha" readonly class="w-full bg-slate-100 border border-slate-300 rounded-lg p-2 font-mono text-[11px] text-slate-700">
+                        <button onclick="copiarBoletoLinha()" class="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1">
+                            <i class="fa-regular fa-copy"></i>
+                            <span>Copiar</span>
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="window.print()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs transition flex items-center justify-center space-x-1.5">
+                    <i class="fa-solid fa-print"></i>
+                    <span>Imprimir Boleto / Salvar em PDF</span>
+                </button>
+            </div>
+
+            <!-- 4. Conteúdo: WhatsApp Comercial com Luciano -->
+            <div id="tabConteudoZap" class="hidden space-y-3 text-left">
+                <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1">
+                    <span class="font-bold text-emerald-900 block flex items-center space-x-1">
+                        <i class="fa-brands fa-whatsapp text-emerald-600"></i>
+                        <span>Atendimento Comercial Direto com Luciano</span>
+                    </span>
+                    <p class="text-emerald-700 text-[11px]">Precisa de emissão de Nota Fiscal, contrato personalizado ou desconto para múltiplas torres?</p>
+                </div>
+
+                <a id="btnZapComercial" href="#" target="_blank" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow transition flex items-center justify-center space-x-2">
+                    <i class="fa-brands fa-whatsapp text-lg"></i>
+                    <span>Conversar com Luciano pelo WhatsApp</span>
+                </a>
+            </div>
+
         </div>
     </div>
 

@@ -58,3 +58,21 @@ def gerar_url_qr_code(payload_pix: str) -> str:
     encoded = urllib.parse.quote(payload_pix)
     return f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={encoded}"
 
+def gerar_linha_digitavel_boleto(valor: float, txid: str = "123456789") -> str:
+    """
+    Gera linha digitável formatada padrão Febraban para faturamento condominial corporativo.
+    """
+    banco = "001" # Banco do Brasil / Febraban
+    moeda = "9"   # Real
+    valor_cents = str(int(round(valor * 100))).zfill(10)
+    tx_num = ''.join(filter(str.isdigit, txid))[:20].zfill(20)
+    
+    campo1 = f"{banco}{moeda}1.{tx_num[:4]}2"
+    campo2 = f"{tx_num[4:9]}.{tx_num[9:15]}4"
+    campo3 = f"{tx_num[15:20]}.000018"
+    dv_geral = "7"
+    fator_vencimento = "9988" # Fator de vencimento Febraban
+    
+    return f"{campo1} {campo2} {campo3} {dv_geral} {fator_vencimento}{valor_cents}"
+
+

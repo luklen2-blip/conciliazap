@@ -646,10 +646,55 @@ async function gerarPixPlano(nome, preco) {
         document.getElementById("pixModalQrImg").src = data.qr_code_url;
         document.getElementById("pixModalCopiaCola").value = data.pix_copia_e_cola;
 
+        if (document.getElementById("modalBoletoLinha")) {
+            document.getElementById("modalBoletoLinha").value = data.boleto_linha || "";
+        }
+        if (document.getElementById("btnLinkCartaoExterno")) {
+            document.getElementById("btnLinkCartaoExterno").href = data.link_cartao || "https://mpago.la/pos/conciliazap";
+        }
+        if (document.getElementById("btnZapComercial")) {
+            document.getElementById("btnZapComercial").href = data.whatsapp_link || `https://wa.me/${data.whatsapp_vendas || '5511999998888'}`;
+        }
+
+        selecionarFormaPagamento('pix');
         document.getElementById("modalPix").classList.remove("hidden");
     } catch (e) {
-        alert("Erro ao gerar PIX");
+        alert("Erro ao carregar opções de pagamento.");
     }
+}
+
+function selecionarFormaPagamento(tipo) {
+    const abas = ['pix', 'cartao', 'boleto', 'zap'];
+    abas.forEach(aba => {
+        const btn = document.getElementById(`btnTab${aba.charAt(0).toUpperCase() + aba.slice(1)}`);
+        const conteudo = document.getElementById(`tabConteudo${aba.charAt(0).toUpperCase() + aba.slice(1)}`);
+        if (btn && conteudo) {
+            if (aba === tipo) {
+                btn.classList.add("bg-white", "text-emerald-700", "shadow-sm");
+                btn.classList.remove("text-slate-600");
+                conteudo.classList.remove("hidden");
+            } else {
+                btn.classList.remove("bg-white", "text-emerald-700", "shadow-sm");
+                btn.classList.add("text-slate-600");
+                conteudo.classList.add("hidden");
+            }
+        }
+    });
+}
+
+function simularPagamentoCartao() {
+    exibirToast("💳 Pagamento com Cartão APROVADO com sucesso!");
+    setTimeout(() => {
+        fecharModalPix();
+    }, 1500);
+}
+
+function copiarBoletoLinha() {
+    const input = document.getElementById("modalBoletoLinha");
+    if (!input) return;
+    input.select();
+    navigator.clipboard.writeText(input.value);
+    exibirToast("Linha digitável do boleto copiada com sucesso!");
 }
 
 function fecharModalPix() {
@@ -684,14 +729,18 @@ async function carregarConfiguracoes() {
         if (cfg.whatsapp_instancia) document.getElementById("cfgInstancia").value = cfg.whatsapp_instancia;
         if (cfg.evolution_api_key) document.getElementById("cfgApiKey").value = cfg.evolution_api_key;
         
-        // Dados do PIX de Recebimento do Luciano
+        // Dados do PIX e Formas de Pagamento do Luciano
         const chavePix = cfg.chave_pix || "luciano@conciliazap.com.br";
         const nomeRecebedor = cfg.nome_recebedor || "Luciano";
         const cidadeRecebedor = cfg.cidade_recebedor || "SAO PAULO";
+        const linkCartao = cfg.link_cartao || "https://mpago.la/pos/conciliazap";
+        const whatsVendas = cfg.whatsapp_vendas || "5511999998888";
 
         if (document.getElementById("cfgChavePix")) document.getElementById("cfgChavePix").value = chavePix;
         if (document.getElementById("cfgNomeRecebedor")) document.getElementById("cfgNomeRecebedor").value = nomeRecebedor;
         if (document.getElementById("cfgCidadeRecebedor")) document.getElementById("cfgCidadeRecebedor").value = cidadeRecebedor;
+        if (document.getElementById("cfgLinkCartao")) document.getElementById("cfgLinkCartao").value = linkCartao;
+        if (document.getElementById("cfgWhatsVendas")) document.getElementById("cfgWhatsVendas").value = whatsVendas;
 
         const infoPix = document.getElementById("infoPixDisplay");
         if (infoPix) {
@@ -712,7 +761,9 @@ async function salvarConfiguracoes() {
         evolution_api_key: document.getElementById("cfgApiKey").value.trim(),
         chave_pix: (document.getElementById("cfgChavePix")?.value || "").trim(),
         nome_recebedor: (document.getElementById("cfgNomeRecebedor")?.value || "Luciano").trim(),
-        cidade_recebedor: (document.getElementById("cfgCidadeRecebedor")?.value || "SAO PAULO").trim()
+        cidade_recebedor: (document.getElementById("cfgCidadeRecebedor")?.value || "SAO PAULO").trim(),
+        link_cartao: (document.getElementById("cfgLinkCartao")?.value || "").trim(),
+        whatsapp_vendas: (document.getElementById("cfgWhatsVendas")?.value || "").trim()
     };
 
     try {
@@ -728,7 +779,7 @@ async function salvarConfiguracoes() {
             infoPix.innerHTML = `<strong class="text-emerald-950">${payload.nome_recebedor}</strong> • Chave: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">${payload.chave_pix}</span> (${payload.cidade_recebedor})`;
         }
 
-        exibirToast("✅ Configurações e Conta PIX salvas com sucesso!");
+        exibirToast("✅ Configurações e Formas de Pagamento salvas com sucesso!");
     } catch (e) {
         alert("Erro ao salvar configurações.");
     }
