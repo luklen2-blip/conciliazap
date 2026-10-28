@@ -48,21 +48,38 @@ class MoradorCreate(BaseModel):
     apartamento: str
     bloco: str
     tipo: Optional[str] = "morador"
+    condominio_id: Optional[int] = 1
+
+class MoradorUpdate(BaseModel):
+    nome: Optional[str] = None
+    telefone: Optional[str] = None
+    apartamento: Optional[str] = None
+    bloco: Optional[str] = None
+    tipo: Optional[str] = None
+    condominio_id: Optional[int] = None
+
+class CondominioCreate(BaseModel):
+    nome: str
+    slug: str
+    cnpj: Optional[str] = None
+    plano_ativo: Optional[str] = "starter"
 
 class ReservaCreate(BaseModel):
     morador_id: int
     area: str
     data_reserva: str
     periodo: str
+    condominio_id: Optional[int] = 1
 
 class AchadoCreate(BaseModel):
     item: str
     local_encontrado: str
+    condominio_id: Optional[int] = 1
 
 class OcorrenciaDecisao(BaseModel):
-    status: str  # 'Aprovada' ou 'Rejeitada'
+    status: str  # 'Aprovada', 'Rejeitada' ou 'Arquivada'
     motivo: Optional[str] = ""
-    penalidade: Optional[str] = "Aviso Amigável" # 'Aviso Amigável', 'Advertência Formal', 'Multa'
+    penalidade: Optional[str] = "Aviso Amigável" # 'Aviso Amigável', 'Advertência Formal', 'Multa', 'Nenhuma'
     valor_multa: Optional[float] = 0.0
 
 class PixRequest(BaseModel):
@@ -71,6 +88,10 @@ class PixRequest(BaseModel):
     chave_pix: Optional[str] = "contato@conciliazap.com.br"
     nome_recebedor: Optional[str] = "ConciliaZap Solucoes Ltda"
     cidade: Optional[str] = "SAO PAULO"
+    condominio_id: Optional[int] = 1
+
+class PixConfirmRequest(BaseModel):
+    txid: str
 
 # --- INICIALIZAÇÃO E CONEXÃO COM O BANCO ---
 def get_db():
@@ -84,20 +105,37 @@ def inicializar_banco():
     conn.execute("PRAGMA journal_mode=WAL;")
     cursor = conn.cursor()
     
+    # 0. Tabela de Condomínios (Multiempresa / Multitenant)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS condominios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        slug TEXT UNIQUE NOT NULL,
+        cnpj TEXT,
+        plano_ativo TEXT DEFAULT 'starter',
+        plano_expira_em DATETIME,
+        criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+    )""")
+    
+    # 1. Tabela de Moradores
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS moradores (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        condominio_id INTEGER DEFAULT 1,
         nome TEXT NOT NULL,
         telefone TEXT UNIQUE NOT NULL,
         apartamento TEXT NOT NULL,
         bloco TEXT NOT NULL,
         tipo TEXT DEFAULT 'morador',
-        criado_em DATETIME DEFAULT CURRENT_TIMESTAMP
+        criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(condominio_id) REFERENCES condominios(id)
     )""")
     
+    # 2. Tabela de Ocorrências
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS ocorrencias (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        condominio_id INTEGER DEFAULT 1,
         morador_id INTEGER NOT NULL,
         apartamento_alvo TEXT,
         bloco_alvo TEXT,
@@ -111,12 +149,15 @@ def inicializar_banco():
         valor_multa REAL DEFAULT 0.0,
         data_hora DATETIME DEFAULT CURRENT_TIMESTAMP,
         resolvido_em DATETIME,
+        FOREIGN KEY(condominio_id) REFERENCES condominios(id),
         FOREIGN KEY(morador_id) REFERENCES moradores(id)
     )""")
     
+    # 3. Tabela de Reservas
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS reservas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        condominio_id INTEGER DEFAULT 1,
         morador_id INTEGER NOT NULL,
         area TEXT NOT NULL,
         data_reserva TEXT NOT NULL,
@@ -124,62 +165,115 @@ def inicializar_banco():
         status TEXT DEFAULT 'Confirmada',
         termo_aceito INTEGER DEFAULT 1,
         criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(condominio_id) REFERENCES condominios(id),
         FOREIGN KEY(morador_id) REFERENCES moradores(id)
     )""")
     
+    # 4. Tabela de Achados e Perdidos
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS achados_perdidos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        condominio_id INTEGER DEFAULT 1,
         item TEXT NOT NULL,
         local_encontrado TEXT NOT NULL,
         status TEXT DEFAULT 'Disponível',
         devolvido_para TEXT,
-        data_registro DATETIME DEFAULT CURRENT_TIMESTAMP
+        data_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(condominio_id) REFERENCES condominios(id)
     )""")
     
+    # 5. Tabela de Cobranças e Faturas PIX
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS cobrancas_pix (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        txid TEXT UNIQUE NOT NULL,
+        condominio_id INTEGER DEFAULT 1,
+        plano TEXT NOT NULL,
+        valor REAL NOT NULL,
+        status TEXT DEFAULT 'PENDENTE',
+        pix_copia_e_cola TEXT,
+        qr_code_url TEXT,
+        criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
+        pago_em DATETIME,
+        FOREIGN KEY(condominio_id) REFERENCES condominios(id)
+    )""")
+    
+    # 6. Tabela de Configurações
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS configuracoes (
         chave TEXT PRIMARY KEY,
         valor TEXT
     )""")
+
+    # Migrações seguras de colunas existentes
+    def migrar_coluna(table, col):
+        try:
+            cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
+        except sqlite3.OperationalError:
+            pass
+
+    migrar_coluna("moradores", "condominio_id INTEGER DEFAULT 1")
+    migrar_coluna("ocorrencias", "condominio_id INTEGER DEFAULT 1")
+    migrar_coluna("reservas", "condominio_id INTEGER DEFAULT 1")
+    migrar_coluna("achados_perdidos", "condominio_id INTEGER DEFAULT 1")
     
-    # Moradores de demonstração
-    moradores_iniciais = [
-        ("Roberto Oliveira (Síndico)", "5511999990001", "101", "A", "sindico"),
-        ("Carlos Mendes", "5511999990302", "302", "A", "morador"),
-        ("Marcos Souza", "5511999990402", "402", "A", "morador"),
-        ("Juliana Costa", "5511999990205", "205", "B", "morador"),
-        ("Fernanda Lima", "5511999990501", "501", "B", "morador"),
-        ("Eduardo Rocha", "5511999990104", "104", "A", "morador")
-    ]
-    for nome, tel, ap, bloco, tipo in moradores_iniciais:
+    # Condomínios de demonstração (Multiempresa)
+    cursor.execute("SELECT COUNT(*) FROM condominios")
+    if cursor.fetchone()[0] == 0:
         cursor.execute("""
-        INSERT OR IGNORE INTO moradores (nome, telefone, apartamento, bloco, tipo)
-        VALUES (?, ?, ?, ?, ?)
-        """, (nome, tel, ap, bloco, tipo))
+        INSERT INTO condominios (id, nome, slug, cnpj, plano_ativo)
+        VALUES (1, 'Condomínio Residencial Jardins', 'jardins', '12.345.678/0001-90', 'pro'),
+               (2, 'Condomínio Solar das Palmeiras', 'palmeiras', '98.765.432/0001-10', 'starter')
+        """)
+    
+    # Moradores de demonstração Condomínio 1
+    moradores_iniciais = [
+        (1, "Roberto Oliveira (Síndico)", "5511999990001", "101", "A", "sindico"),
+        (1, "Carlos Mendes", "5511999990302", "302", "A", "morador"),
+        (1, "Marcos Souza", "5511999990402", "402", "A", "morador"),
+        (1, "Juliana Costa", "5511999990205", "205", "B", "morador"),
+        (1, "Fernanda Lima", "5511999990501", "501", "B", "morador"),
+        (1, "Eduardo Rocha", "5511999990104", "104", "A", "morador")
+    ]
+    for cid, nome, tel, ap, bloco, tipo in moradores_iniciais:
+        cursor.execute("""
+        INSERT OR IGNORE INTO moradores (condominio_id, nome, telefone, apartamento, bloco, tipo)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, (cid, nome, tel, ap, bloco, tipo))
+
+    # Moradores de demonstração Condomínio 2 (Para teste de isolamento multiempresa)
+    moradores_condo2 = [
+        (2, "Beatriz Ramos (Síndica Palmeiras)", "5511999990888", "101", "A", "sindico"),
+        (2, "Rodrigo Silveira", "5511999990777", "202", "B", "morador")
+    ]
+    for cid, nome, tel, ap, bloco, tipo in moradores_condo2:
+        cursor.execute("""
+        INSERT OR IGNORE INTO moradores (condominio_id, nome, telefone, apartamento, bloco, tipo)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, (cid, nome, tel, ap, bloco, tipo))
 
     # Ocorrência inicial de exemplo
     cursor.execute("SELECT COUNT(*) FROM ocorrencias")
     if cursor.fetchone()[0] == 0:
         cursor.execute("""
-        INSERT INTO ocorrencias (morador_id, apartamento_alvo, bloco_alvo, categoria, descricao, status, penalidade)
-        VALUES (2, '402', 'A', 'Barulho', 'Barulho de obra e som excessivo no 402 após as 22h com batidas fortes.', 'Pendente', 'Nenhuma')
+        INSERT INTO ocorrencias (condominio_id, morador_id, apartamento_alvo, bloco_alvo, categoria, descricao, status, penalidade)
+        VALUES (1, 2, '402', 'A', 'Barulho', 'Barulho de obra e som excessivo no 402 após as 22h com batidas fortes.', 'Pendente', 'Nenhuma')
         """)
 
     # Reserva inicial
     cursor.execute("SELECT COUNT(*) FROM reservas")
     if cursor.fetchone()[0] == 0:
         cursor.execute("""
-        INSERT INTO reservas (morador_id, area, data_reserva, periodo, status)
-        VALUES (4, 'Salão de Festas', '2026-11-15', 'Noite (18h às 23h)', 'Confirmada')
+        INSERT INTO reservas (condominio_id, morador_id, area, data_reserva, periodo, status)
+        VALUES (1, 4, 'Salão de Festas', '2026-11-15', 'Noite (18h às 23h)', 'Confirmada')
         """)
 
     # Achados e perdidos
     cursor.execute("SELECT COUNT(*) FROM achados_perdidos")
     if cursor.fetchone()[0] == 0:
         cursor.execute("""
-        INSERT INTO achados_perdidos (item, local_encontrado, status)
-        VALUES ('Chaveiro com controle de portão', 'Garagem Subsolo 1 (próximo à vaga 22)', 'Disponível')
+        INSERT INTO achados_perdidos (condominio_id, item, local_encontrado, status)
+        VALUES (1, 'Chaveiro com controle de portão', 'Garagem Subsolo 1 (próximo à vaga 22)', 'Disponível')
         """)
 
     # Configurações padrão
@@ -206,12 +300,40 @@ def sanitizar_telefone(tel: str) -> str:
         limpo = "55" + limpo
     return limpo
 
+def extrair_dados_mensagem(body: Any) -> tuple[str, str, str]:
+    if not isinstance(body, dict):
+        return "msg-auto", "", ""
+        
+    # 1. Formato Evolution API: {"event": "messages.upsert", "data": {"key": {"remoteJid": "...@s.whatsapp.net"}, "message": {"conversation": "..."}}}
+    if "data" in body and isinstance(body["data"], dict):
+        d = body["data"]
+        key = d.get("key", {}) if isinstance(d.get("key"), dict) else {}
+        msg_id = key.get("id", "evo-msg")
+        remote_jid = key.get("remoteJid", "")
+        message = d.get("message", {}) if isinstance(d.get("message"), dict) else {}
+        texto = message.get("conversation") or message.get("extendedTextMessage", {}).get("text") or ""
+        return msg_id, remote_jid, texto
+
+    # 2. Formato Z-API: {"phone": "...", "text": {"message": "..."}, "messageId": "..."}
+    if "phone" in body:
+        msg_id = body.get("messageId", "zapi-msg")
+        phone = body.get("phone", "")
+        text_obj = body.get("text", {})
+        texto = text_obj.get("message") if isinstance(text_obj, dict) else str(text_obj)
+        return msg_id, phone, texto
+
+    # 3. Formato Padrão / Simulador: {"sender_phone": "...", "text": "...", "id": "..."}
+    msg_id = body.get("id", "msg-direct")
+    sender_phone = body.get("sender_phone") or body.get("from") or body.get("telefone") or ""
+    texto = body.get("text") or body.get("mensagem") or body.get("body") or ""
+    return msg_id, sender_phone, texto
+
 def buscar_morador_por_telefone(telefone: str):
     tel_limpo = sanitizar_telefone(telefone)
     conn = get_db()
     cursor = conn.cursor()
     # Tenta com 55 e sem 55
-    cursor.execute("SELECT id, nome, telefone, apartamento, bloco, tipo FROM moradores WHERE telefone = ? OR telefone LIKE ?", 
+    cursor.execute("SELECT id, nome, telefone, apartamento, bloco, tipo, condominio_id FROM moradores WHERE telefone = ? OR telefone LIKE ?", 
                    (tel_limpo, f"%{tel_limpo[-8:]}"))
     morador = cursor.fetchone()
     conn.close()
@@ -226,24 +348,24 @@ def extrair_apartamento_alvo(texto: str):
     bloco = match_bloco.group(1).upper() if match_bloco else "A"
     return ap, bloco
 
-def contar_reincidencias(apartamento: str, bloco: str) -> int:
+def contar_reincidencias(apartamento: str, bloco: str, condominio_id: int = 1) -> int:
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
     SELECT COUNT(*) FROM ocorrencias 
-    WHERE apartamento_alvo = ? AND bloco_alvo = ? AND status IN ('Aprovada', 'Notificada')
-    """, (apartamento, bloco))
+    WHERE apartamento_alvo = ? AND bloco_alvo = ? AND status IN ('Aprovada', 'Notificada') AND condominio_id = ?
+    """, (apartamento, bloco, condominio_id))
     total = cursor.fetchone()[0]
     conn.close()
     return total
 
-def registrar_ocorrencia(morador_id: int, descricao: str, apartamento_alvo: str = "A Definir", bloco_alvo: str = "A") -> int:
+def registrar_ocorrencia(morador_id: int, descricao: str, apartamento_alvo: str = "A Definir", bloco_alvo: str = "A", condominio_id: int = 1) -> int:
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-    INSERT INTO ocorrencias (morador_id, apartamento_alvo, bloco_alvo, categoria, descricao, status)
-    VALUES (?, ?, ?, 'Barulho', ?, 'Pendente')
-    """, (morador_id, apartamento_alvo, bloco_alvo, descricao))
+    INSERT INTO ocorrencias (morador_id, apartamento_alvo, bloco_alvo, categoria, descricao, status, condominio_id)
+    VALUES (?, ?, ?, 'Barulho', ?, 'Pendente', ?)
+    """, (morador_id, apartamento_alvo, bloco_alvo, descricao, condominio_id))
     ocorrencia_id = cursor.lastrowid
     conn.commit()
     conn.close()
@@ -267,13 +389,19 @@ async def health_check():
 # --- 2. WEBHOOK WHATSAPP & PROCESSAMENTO AUTÔNOMO ---
 @app.post("/webhook/whatsapp")
 @app.post("/api/webhook/whatsapp")
-async def processar_mensagem_whatsapp(data: WhatsAppMessage):
+async def processar_mensagem_whatsapp(request: Request):
     """
-    Processador autônomo de mensagens WhatsApp recebidas da Evolution API / Z-API.
-    Identifica o morador, detecta a intenção (Barulho/Conflito, Reservas, Achados, Regras)
-    e executa o fluxo automatizado sem atrito.
+    Processador autônomo e universal de mensagens WhatsApp recebidas da Evolution API / Z-API.
+    Identifica o morador, seu condomínio (multiempresa), detecta a intenção
+    (Barulho/Conflito, Reservas, Achados, Regras) e executa o fluxo automatizado sem atrito.
     """
-    telefone_limpo = sanitizar_telefone(data.sender_phone)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+        
+    msg_id, sender_phone, texto_raw = extrair_dados_mensagem(body)
+    telefone_limpo = sanitizar_telefone(sender_phone)
     morador = buscar_morador_por_telefone(telefone_limpo)
     
     if not morador:
@@ -286,7 +414,9 @@ async def processar_mensagem_whatsapp(data: WhatsAppMessage):
     nome = morador["nome"]
     ap = morador["apartamento"]
     bloco = morador["bloco"]
-    texto = data.text.strip()
+    condo_id = morador["condominio_id"] if "condominio_id" in morador.keys() else 1
+    
+    texto = (texto_raw or "").strip()
     texto_lower = texto.lower()
     
     # 1. FLUXO DE CONFLITO E BARULHO (MODERAÇÃO SEM ATRITO)
@@ -296,11 +426,12 @@ async def processar_mensagem_whatsapp(data: WhatsAppMessage):
         if not ap_alvo:
             ap_alvo = "A Definir"
             
-        ocorrencia_id = registrar_ocorrencia(morador_id, texto, ap_alvo, bloco_alvo)
+        ocorrencia_id = registrar_ocorrencia(morador_id, texto, ap_alvo, bloco_alvo, condo_id)
         
         return {
             "status": "occurrence_created",
             "ocorrencia_id": ocorrencia_id,
+            "condominio_id": condo_id,
             "reply": (
                 f"⚖️ *Ocorrência #{ocorrencia_id} Registrada com Sucesso!*\n\n"
                 f"Olá {nome} (Ap {ap}-{bloco}). Identificamos seu registro referente à perturbação no apartamento {ap_alvo} (Bloco {bloco_alvo}).\n\n"
@@ -314,7 +445,7 @@ async def processar_mensagem_whatsapp(data: WhatsAppMessage):
     if any(p in texto_lower for p in ["reserva", "salao", "salão", "churrasqueira", "quadra"]):
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT area, data_reserva, periodo FROM reservas WHERE date(data_reserva) >= date('now') ORDER BY data_reserva ASC LIMIT 3")
+        cursor.execute("SELECT area, data_reserva, periodo FROM reservas WHERE condominio_id = ? AND date(data_reserva) >= date('now') ORDER BY data_reserva ASC LIMIT 3", (condo_id,))
         proximas = cursor.fetchall()
         conn.close()
         
@@ -337,7 +468,7 @@ async def processar_mensagem_whatsapp(data: WhatsAppMessage):
     if any(p in texto_lower for p in ["achado", "perdido", "perdi", "encontrei", "chave", "carteira", "objeto"]):
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, item, local_encontrado, data_registro FROM achados_perdidos WHERE status = 'Disponível' ORDER BY id DESC LIMIT 4")
+        cursor.execute("SELECT id, item, local_encontrado, data_registro FROM achados_perdidos WHERE condominio_id = ? AND status = 'Disponível' ORDER BY id DESC LIMIT 4", (condo_id,))
         itens = cursor.fetchall()
         conn.close()
         
@@ -382,27 +513,31 @@ async def processar_mensagem_whatsapp(data: WhatsAppMessage):
 
 # --- 3. SIMULADOR DE WHATSAPP PARA TESTES NO NAVEGADOR ---
 @app.post("/api/simulador/enviar")
-async def simular_envio_whatsapp(payload: WhatsAppMessage):
+async def simular_envio_whatsapp(request: Request):
     """
     Permite testar o fluxo completo de atendimento e moderação direto do navegador
     sem precisar de celular ou API externa conectada.
     """
-    resposta = await processar_mensagem_whatsapp(payload)
+    resposta = await processar_mensagem_whatsapp(request)
     return resposta
 
 # --- 4. GESTÃO DE OCORRÊNCIAS & PAINEL DO SÍNDICO ---
 @app.get("/api/ocorrencias")
-async def listar_ocorrencias(status: Optional[str] = None):
+async def listar_ocorrencias(status: Optional[str] = None, condominio_id: Optional[int] = None):
     conn = get_db()
     cursor = conn.cursor()
     query = """
     SELECT o.*, m.nome as denunciante_nome, m.apartamento as denunciante_ap, m.bloco as denunciante_bloco, m.telefone as denunciante_tel
     FROM ocorrencias o
     JOIN moradores m ON o.morador_id = m.id
+    WHERE 1=1
     """
     params = []
+    if condominio_id:
+        query += " AND o.condominio_id = ?"
+        params.append(condominio_id)
     if status and status != "Todas":
-        query += " WHERE o.status = ?"
+        query += " AND o.status = ?"
         params.append(status)
     query += " ORDER BY o.id DESC"
     cursor.execute(query, params)
@@ -411,7 +546,8 @@ async def listar_ocorrencias(status: Optional[str] = None):
     
     lista = []
     for r in rows:
-        reincidencias = contar_reincidencias(r["apartamento_alvo"], r["bloco_alvo"])
+        cid = r["condominio_id"] if "condominio_id" in r.keys() else 1
+        reincidencias = contar_reincidencias(r["apartamento_alvo"], r["bloco_alvo"], cid)
         item = dict(r)
         item["reincidencias_infrator"] = reincidencias
         lista.append(item)
@@ -565,24 +701,32 @@ async def gerar_laudo_formal_html(ocorrencia_id: int):
 
 # --- 6. GESTÃO DE MORADORES E IMPORTAÇÃO EM LOTE ---
 @app.get("/api/moradores")
-async def listar_moradores():
+async def listar_moradores(condominio_id: Optional[int] = None):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM moradores ORDER BY bloco ASC, apartamento ASC")
+    if condominio_id:
+        cursor.execute("SELECT * FROM moradores WHERE condominio_id = ? ORDER BY bloco ASC, apartamento ASC", (condominio_id,))
+    else:
+        cursor.execute("SELECT * FROM moradores ORDER BY bloco ASC, apartamento ASC")
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
 @app.post("/api/moradores")
-async def cadastrar_morador(m: MoradorCreate):
+async def cadastrar_morador(m: MoradorCreate, request: Request):
+    user_role = request.headers.get("X-User-Role", "sindico").lower()
+    if user_role not in ["sindico", "administrador", "admin"]:
+        raise HTTPException(status_code=403, detail="Apenas síndicos ou administradores têm permissão para cadastrar moradores.")
+        
     tel_limpo = sanitizar_telefone(m.telefone)
+    condo_id = m.condominio_id or 1
     conn = get_db()
     cursor = conn.cursor()
     try:
         cursor.execute("""
-        INSERT INTO moradores (nome, telefone, apartamento, bloco, tipo)
-        VALUES (?, ?, ?, ?, ?)
-        """, (m.nome, tel_limpo, m.apartamento, m.bloco.upper(), m.tipo))
+        INSERT INTO moradores (nome, telefone, apartamento, bloco, tipo, condominio_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, (m.nome, tel_limpo, m.apartamento, m.bloco.upper(), m.tipo, condo_id))
         novo_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -590,6 +734,40 @@ async def cadastrar_morador(m: MoradorCreate):
     except sqlite3.IntegrityError:
         conn.close()
         raise HTTPException(status_code=400, detail="Este telefone já se encontra cadastrado em outra unidade.")
+
+@app.put("/api/moradores/{morador_id}")
+async def editar_morador(morador_id: int, m: MoradorUpdate, request: Request):
+    user_role = request.headers.get("X-User-Role", "sindico").lower()
+    if user_role not in ["sindico", "administrador", "admin"]:
+        raise HTTPException(status_code=403, detail="Apenas síndicos ou administradores têm permissão para editar moradores.")
+        
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM moradores WHERE id = ?", (morador_id,))
+    morador = cursor.fetchone()
+    if not morador:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Morador não encontrado.")
+        
+    novo_nome = m.nome if m.nome is not None else morador["nome"]
+    novo_tel = sanitizar_telefone(m.telefone) if m.telefone is not None else morador["telefone"]
+    novo_ap = m.apartamento if m.apartamento is not None else morador["apartamento"]
+    novo_bloco = m.bloco.upper() if m.bloco is not None else morador["bloco"]
+    novo_tipo = m.tipo if m.tipo is not None else morador["tipo"]
+    novo_condo = m.condominio_id if m.condominio_id is not None else (morador["condominio_id"] if "condominio_id" in morador.keys() else 1)
+    
+    try:
+        cursor.execute("""
+        UPDATE moradores 
+        SET nome = ?, telefone = ?, apartamento = ?, bloco = ?, tipo = ?, condominio_id = ?
+        WHERE id = ?
+        """, (novo_nome, novo_tel, novo_ap, novo_bloco, novo_tipo, novo_condo, morador_id))
+        conn.commit()
+        conn.close()
+        return {"status": "success", "mensagem": "Dados do morador atualizados com sucesso!"}
+    except sqlite3.IntegrityError:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Este telefone já está cadastrado em outra unidade.")
 
 @app.post("/admin/moradores")
 async def cadastrar_morador_teste(
@@ -606,6 +784,7 @@ async def cadastrar_morador_teste(
     final_tel = (body.telefone if body else None) or telefone
     final_ap = (body.apartamento if body else None) or apartamento
     final_bloco = (body.bloco if body else None) or bloco
+    final_condo = (body.condominio_id if body and body.condominio_id else 1)
     
     if not all([final_nome, final_tel, final_ap, final_bloco]):
         raise HTTPException(status_code=422, detail="Campos nome, telefone, apartamento e bloco são obrigatórios.")
@@ -614,8 +793,8 @@ async def cadastrar_morador_teste(
     try:
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO moradores (nome, telefone, apartamento, bloco, tipo) VALUES (?, ?, ?, ?, 'morador')", 
-                       (final_nome, tel_limpo, final_ap, final_bloco.upper()))
+        cursor.execute("INSERT INTO moradores (nome, telefone, apartamento, bloco, tipo, condominio_id) VALUES (?, ?, ?, ?, 'morador', ?)", 
+                       (final_nome, tel_limpo, final_ap, final_bloco.upper(), final_condo))
         conn.commit()
         conn.close()
         return {"status": "Morador cadastrado com sucesso!"}
@@ -623,7 +802,11 @@ async def cadastrar_morador_teste(
         raise HTTPException(status_code=400, detail="Este telefone já está cadastrado.")
 
 @app.delete("/api/moradores/{morador_id}")
-async def deletar_morador(morador_id: int):
+async def deletar_morador(morador_id: int, request: Request):
+    user_role = request.headers.get("X-User-Role", "sindico").lower()
+    if user_role not in ["sindico", "administrador", "admin"]:
+        raise HTTPException(status_code=403, detail="Apenas síndicos ou administradores têm permissão para remover moradores.")
+        
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM moradores WHERE id = ?", (morador_id,))
@@ -653,15 +836,20 @@ async def importar_moradores_lote(lista: List[MoradorCreate]):
 
 # --- 7. ÁREAS COMUNS E RESERVAS ---
 @app.get("/api/reservas")
-async def listar_reservas():
+async def listar_reservas(condominio_id: Optional[int] = None):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("""
+    query = """
     SELECT r.*, m.nome as morador_nome, m.apartamento, m.bloco, m.telefone
     FROM reservas r
     JOIN moradores m ON r.morador_id = m.id
-    ORDER BY r.data_reserva ASC
-    """)
+    """
+    params = []
+    if condominio_id:
+        query += " WHERE r.condominio_id = ?"
+        params.append(condominio_id)
+    query += " ORDER BY r.data_reserva ASC"
+    cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
@@ -670,10 +858,33 @@ async def listar_reservas():
 async def criar_reserva(reserva: ReservaCreate):
     conn = get_db()
     cursor = conn.cursor()
+    
+    # 1. Valida se o morador existe
+    cursor.execute("SELECT id, condominio_id FROM moradores WHERE id = ?", (reserva.morador_id,))
+    morador = cursor.fetchone()
+    if not morador:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Morador não encontrado.")
+        
+    condo_id = reserva.condominio_id or (morador["condominio_id"] if "condominio_id" in morador.keys() else 1)
+    
+    # 2. Prevenção de conflito de agenda (Item 4 do checklist)
     cursor.execute("""
-    INSERT INTO reservas (morador_id, area, data_reserva, periodo, status)
-    VALUES (?, ?, ?, ?, 'Confirmada')
-    """, (reserva.morador_id, reserva.area, reserva.data_reserva, reserva.periodo))
+    SELECT id, morador_id FROM reservas 
+    WHERE area = ? AND data_reserva = ? AND periodo = ? AND status = 'Confirmada' AND condominio_id = ?
+    """, (reserva.area, reserva.data_reserva, reserva.periodo, condo_id))
+    conflito = cursor.fetchone()
+    if conflito:
+        conn.close()
+        raise HTTPException(
+            status_code=409, 
+            detail=f"Conflito de agenda: A área '{reserva.area}' já está reservada para o período '{reserva.periodo}' em {reserva.data_reserva}."
+        )
+        
+    cursor.execute("""
+    INSERT INTO reservas (morador_id, area, data_reserva, periodo, status, condominio_id)
+    VALUES (?, ?, ?, ?, 'Confirmada', ?)
+    """, (reserva.morador_id, reserva.area, reserva.data_reserva, reserva.periodo, condo_id))
     reserva_id = cursor.lastrowid
     conn.commit()
     conn.close()
@@ -752,18 +963,32 @@ async def listar_planos():
 @app.post("/api/pix/gerar")
 async def gerar_pix_cobranca(req: PixRequest):
     """
-    Gera o código Copia-e-Cola PIX oficial (EMV Bacen) e URL de QR Code dinâmico.
+    Gera o código Copia-e-Cola PIX oficial (EMV Bacen) e URL de QR Code dinâmico,
+    registrando a cobrança no banco com status PENDENTE para controle financeiro.
     """
+    txid = f"CONCILIA{int(time.time())}{os.urandom(2).hex().upper()}"
     payload_emv = pix.gerar_pix_copia_e_cola(
         chave_pix=req.chave_pix,
         nome_recebedor=req.nome_recebedor,
         cidade=req.cidade,
         valor=req.valor,
-        txid=f"CONCILIA{int(time.time())}"
+        txid=txid[:25]
     )
     qr_code_url = pix.gerar_url_qr_code(payload_emv)
+    condo_id = req.condominio_id or 1
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+    INSERT INTO cobrancas_pix (txid, condominio_id, plano, valor, status, pix_copia_e_cola, qr_code_url)
+    VALUES (?, ?, ?, ?, 'PENDENTE', ?, ?)
+    """, (txid, condo_id, req.plano_nome, req.valor, payload_emv, qr_code_url))
+    conn.commit()
+    conn.close()
+    
     return {
         "status": "success",
+        "txid": txid,
         "plano": req.plano_nome,
         "valor": req.valor,
         "pix_copia_e_cola": payload_emv,
@@ -771,6 +996,85 @@ async def gerar_pix_cobranca(req: PixRequest):
         "chave_pix": req.chave_pix,
         "nome_recebedor": req.nome_recebedor
     }
+
+@app.post("/api/pix/confirmar")
+async def confirmar_pagamento_pix(req: PixConfirmRequest):
+    """
+    Confirmação do pagamento PIX com garantia de IDEMPOTÊNCIA (sem duplicidade).
+    Ativa o plano contratado no condomínio correspondente.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM cobrancas_pix WHERE txid = ?", (req.txid,))
+    cobranca = cursor.fetchone()
+    
+    if not cobranca:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Cobrança PIX não encontrada.")
+        
+    if cobranca["status"] == "PAGO":
+        conn.close()
+        return {
+            "status": "already_paid",
+            "mensagem": "Pagamento já havia sido processado e confirmado anteriormente sem duplicidade.",
+            "txid": req.txid,
+            "plano": cobranca["plano"],
+            "pago_em": cobranca["pago_em"]
+        }
+        
+    agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("UPDATE cobrancas_pix SET status = 'PAGO', pago_em = ? WHERE txid = ?", (agora, req.txid))
+    
+    condo_id = cobranca["condominio_id"] or 1
+    cursor.execute("UPDATE condominios SET plano_ativo = ? WHERE id = ?", (cobranca["plano"], condo_id))
+    conn.commit()
+    conn.close()
+    
+    return {
+        "status": "confirmed",
+        "mensagem": "Pagamento confirmado com sucesso! Plano liberado para o condomínio.",
+        "txid": req.txid,
+        "plano": cobranca["plano"],
+        "pago_em": agora
+    }
+
+@app.get("/api/pix/status/{txid}")
+async def status_pagamento_pix(txid: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT txid, plano, valor, status, criado_em, pago_em FROM cobrancas_pix WHERE txid = ?", (txid,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Cobrança não encontrada.")
+    return dict(row)
+
+# --- 10. MULTIEMPRESA: GESTÃO DE CONDOMÍNIOS ---
+@app.get("/api/condominios")
+async def listar_condominios():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM condominios ORDER BY id ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+@app.post("/api/condominios")
+async def criar_condominio(c: CondominioCreate):
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+        INSERT INTO condominios (nome, slug, cnpj, plano_ativo)
+        VALUES (?, ?, ?, ?)
+        """, (c.nome, c.slug, c.cnpj, c.plano_ativo))
+        novo_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return {"status": "success", "id": novo_id, "mensagem": "Condomínio cadastrado com sucesso!"}
+    except sqlite3.IntegrityError:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Já existe um condomínio cadastrado com este slug.")
 
 # --- 10. CONFIGURAÇÕES DO CONDOMÍNIO & WHATSAPP ---
 @app.get("/api/config")
