@@ -888,7 +888,7 @@ function exibirToast(msg) {
 
 // --- DIVULGAÇÃO AOS MORADORES (GRUPO DE WHATSAPP & CARTAZ) ---
 function abrirModalDivulgacao() {
-    const nomeCondo = document.getElementById("headerCondoName")?.innerText || "Condomínio Residencial Jardins";
+    const nomeCondo = document.getElementById("headerCondoName")?.innerText || "Condomínio Colinas de Campo Grande";
     const whats = (document.getElementById("cfgSindicoWhats")?.value || "5511999990001").replace(/\D/g, "");
     const linkWa = `https://wa.me/${whats}?text=Ol%C3%A1%20ConciliaZap!%20Sou%20morador`;
 

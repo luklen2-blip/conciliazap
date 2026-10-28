@@ -275,7 +275,7 @@ def inicializar_banco():
     if cursor.fetchone()[0] == 0:
         cursor.execute("""
         INSERT INTO condominios (id, nome, slug, cnpj, plano_ativo, plano_expira_em, status_assinatura)
-        VALUES (1, 'Condomínio Residencial Jardins', 'jardins', '12.345.678/0001-90', 'pro', ?, 'ativa'),
+        VALUES (1, 'Condomínio Colinas de Campo Grande', 'colinas-de-campo-grande', '12.345.678/0001-90', 'pro', ?, 'ativa'),
                (2, 'Condomínio Solar das Palmeiras', 'palmeiras', '98.765.432/0001-10', 'starter', ?, 'ativa')
         """, (expira_padrao, expira_padrao))
     else:
@@ -334,7 +334,7 @@ def inicializar_banco():
 
     # Configurações padrão
     configs_padrao = [
-        ("nome_condominio", "Condomínio Residencial Jardins"),
+        ("nome_condominio", "Condomínio Colinas de Campo Grande"),
         ("horario_silencio", "22:00 às 08:00"),
         ("whatsapp_instancia", "ConciliaZap-Bot"),
         ("evolution_api_url", "https://api.meucondominio.com.br"),
@@ -858,7 +858,7 @@ async def gerar_laudo_formal_html(ocorrencia_id: int):
     </div>
     <div class="header">
         <div>
-            <div class="title">CONDOMÍNIO RESIDENCIAL JARDINS</div>
+            <div class="title">CONDOMÍNIO COLINAS DE CAMPO GRANDE</div>
             <div style="font-size: 14px; color: #64748b;">Notificação e Auto de Infração Administrativa</div>
         </div>
         <div class="badge">PROCESSO #{oc['id']:04d}</div>
@@ -900,7 +900,7 @@ async def gerar_laudo_formal_html(ocorrencia_id: int):
     </div>
     
     <div class="footer">
-        Condomínio Residencial Jardins • Sistema ConciliaZap 24/7 • Emissão em {datetime.now().strftime("%d/%m/%Y às %H:%M:%S")}
+        Condomínio Colinas de Campo Grande • Sistema ConciliaZap 24/7 • Emissão em {datetime.now().strftime("%d/%m/%Y às %H:%M:%S")}
     </div>
 </body>
 </html>"""
@@ -915,7 +915,7 @@ async def gerar_cartaz_elevador_html():
     cfg = {r["chave"]: r["valor"] for r in cursor.fetchall()}
     conn.close()
     
-    nome_condo = html.escape(cfg.get("nome_condominio") or "Condomínio Residencial Jardins")
+    nome_condo = html.escape(cfg.get("nome_condominio") or "Condomínio Colinas de Campo Grande")
     whats = cfg.get("sindico_whatsapp") or "5511999990001"
     whats_limpo = sanitizar_telefone(whats)
     
