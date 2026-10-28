@@ -976,7 +976,7 @@ async def gerar_pix_cobranca(req: PixRequest):
     nome_final = configs.get("nome_recebedor") or req.nome_recebedor or "Luciano"
     cidade_final = configs.get("cidade_recebedor") or req.cidade or "SAO PAULO"
     link_cartao = configs.get("link_cartao") or "https://mpago.la/pos/conciliazap"
-    link_kiwify = configs.get("link_kiwify") or "https://pay.kiwify.com.br/conciliazap"
+    link_kiwify = configs.get("link_kiwify") or "https://pay.kiwify.com.br/mByEbbl"
     whatsapp_vendas = configs.get("whatsapp_vendas") or "5511999998888"
     
     txid = f"CONCILIA{int(time.time())}{os.urandom(2).hex().upper()}"

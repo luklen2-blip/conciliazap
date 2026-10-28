@@ -647,7 +647,7 @@ async function gerarPixPlano(nome, preco) {
         document.getElementById("pixModalCopiaCola").value = data.pix_copia_e_cola;
 
         if (document.getElementById("btnCheckoutKiwify")) {
-            document.getElementById("btnCheckoutKiwify").href = data.link_kiwify || "https://pay.kiwify.com.br/conciliazap";
+            document.getElementById("btnCheckoutKiwify").href = data.link_kiwify || "https://pay.kiwify.com.br/mByEbbl";
         }
         if (document.getElementById("modalBoletoLinha")) {
             document.getElementById("modalBoletoLinha").value = data.boleto_linha || "";
@@ -745,7 +745,7 @@ async function carregarConfiguracoes() {
         const nomeRecebedor = cfg.nome_recebedor || "Luciano";
         const cidadeRecebedor = cfg.cidade_recebedor || "SAO PAULO";
         const linkCartao = cfg.link_cartao || "https://mpago.la/pos/conciliazap";
-        const linkKiwify = cfg.link_kiwify || "https://pay.kiwify.com.br/conciliazap";
+        const linkKiwify = cfg.link_kiwify || "https://pay.kiwify.com.br/mByEbbl";
         const whatsVendas = cfg.whatsapp_vendas || "5511999998888";
 
         if (document.getElementById("cfgChavePix")) document.getElementById("cfgChavePix").value = chavePix;
