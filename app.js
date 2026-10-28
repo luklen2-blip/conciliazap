@@ -885,3 +885,46 @@ function exibirToast(msg) {
         toast.classList.add("translate-y-20", "opacity-0");
     }, 4000);
 }
+
+// --- DIVULGAÇÃO AOS MORADORES (GRUPO DE WHATSAPP & CARTAZ) ---
+function abrirModalDivulgacao() {
+    const nomeCondo = document.getElementById("headerCondoName")?.innerText || "Condomínio Residencial Jardins";
+    const whats = (document.getElementById("cfgSindicoWhats")?.value || "5511999990001").replace(/\D/g, "");
+    const linkWa = `https://wa.me/${whats}?text=Ol%C3%A1%20ConciliaZap!%20Sou%20morador`;
+
+    const texto = `📢 *COMUNICADO OFICIAL DO CONDOMÍNIO*
+
+Prezados moradores do *${nomeCondo}*!
+
+A partir de hoje, nosso condomínio conta com a *Portaria Digital ConciliaZap 24 Horas*.
+
+Agora você resolve as rotinas do condomínio direto pelo seu WhatsApp:
+🔇 *Registro Sigiloso de Barulho:* Resolva perturbações com 100% de sigilo (sua identidade NUNCA é revelada ao vizinho);
+📅 *Reserva de Áreas Comuns:* Agende churrasqueira e salão de festas pelo WhatsApp;
+📦 *Achados & Perdidos:* Consulte encomendas e objetos deixados na portaria.
+
+👉 *Para começar a usar agora, basta clicar no link abaixo e enviar um "Oi":*
+${linkWa}
+
+📱 *Não precisa baixar nenhum aplicativo!* Funciona 100% direto no seu WhatsApp.
+
+Atenciosamente,
+*Administração do Condomínio*`;
+
+    const textarea = document.getElementById("textoComunicadoZap");
+    if (textarea) textarea.value = texto;
+
+    document.getElementById("modalDivulgacao").classList.remove("hidden");
+}
+
+function fecharModalDivulgacao() {
+    document.getElementById("modalDivulgacao").classList.add("hidden");
+}
+
+function copiarComunicadoZap() {
+    const textarea = document.getElementById("textoComunicadoZap");
+    if (!textarea) return;
+    textarea.select();
+    navigator.clipboard.writeText(textarea.value);
+    exibirToast("📋 Mensagem copiada! Cole no grupo de WhatsApp dos moradores.");
+}

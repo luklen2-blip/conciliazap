@@ -905,7 +905,87 @@ async def gerar_laudo_formal_html(ocorrencia_id: int):
 </body>
 </html>"""
     return HTMLResponse(content=html_content)
-    return HTMLResponse(content=html)
+
+# --- 5.1 CARTAZ OFICIAL IMPRIMÍVEL PARA ELEVADOR E PORTARIA (QR CODE) ---
+@app.get("/api/cartaz-elevador-html", response_class=HTMLResponse)
+async def gerar_cartaz_elevador_html():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT chave, valor FROM configuracoes WHERE chave IN ('nome_condominio', 'sindico_whatsapp')")
+    cfg = {r["chave"]: r["valor"] for r in cursor.fetchall()}
+    conn.close()
+    
+    nome_condo = html.escape(cfg.get("nome_condominio") or "Condomínio Residencial Jardins")
+    whats = cfg.get("sindico_whatsapp") or "5511999990001"
+    whats_limpo = sanitizar_telefone(whats)
+    
+    link_wa = f"https://wa.me/{whats_limpo}?text={urllib.parse.quote('Olá ConciliaZap, sou morador!')}"
+    qr_url = pix.gerar_url_qr_code(link_wa)
+    
+    html_page = f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Cartaz Informativo - {nome_condo}</title>
+    <style>
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #0f172a; background: #fff; max-width: 800px; margin: 0 auto; text-align: center; }}
+        .header {{ border-bottom: 3px solid #0284c7; padding-bottom: 20px; margin-bottom: 30px; }}
+        .badge {{ background: #0284c7; color: #fff; padding: 6px 16px; border-radius: 9999px; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; display: inline-block; }}
+        .title {{ font-size: 30px; font-weight: 900; margin: 15px 0 5px 0; color: #0f172a; }}
+        .subtitle {{ font-size: 16px; color: #64748b; font-weight: 600; }}
+        .qr-card {{ background: #f8fafc; border: 2px dashed #0284c7; border-radius: 20px; padding: 25px; margin: 25px auto; max-width: 420px; }}
+        .qr-img {{ width: 220px; height: 220px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin: 10px auto; }}
+        .features {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin: 25px 0; text-align: left; }}
+        .feat-box {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 15px; }}
+        .feat-title {{ font-weight: bold; font-size: 14px; color: #166534; }}
+        .feat-desc {{ font-size: 12px; color: #374151; margin-top: 5px; line-height: 1.4; }}
+        .alert {{ background: #eff6ff; border: 1px solid #bfdbfe; padding: 15px; border-radius: 12px; font-size: 13px; color: #1e40af; margin-top: 20px; }}
+        .footer {{ margin-top: 35px; border-top: 1px solid #e2e8f0; padding-top: 15px; font-size: 12px; color: #94a3b8; }}
+        .btn-print {{ background: #0284c7; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; margin-bottom: 20px; }}
+        @media print {{ .btn-print {{ display: none; }} body {{ padding: 0; }} }}
+    </style>
+</head>
+<body>
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimir Cartaz (Colar no Elevador e Portaria)</button>
+    <div class="header">
+        <span class="badge">Portaria Digital 24 Horas</span>
+        <h1 class="title">{nome_condo}</h1>
+        <p class="subtitle">Canal Oficial de Atendimento e Convivência via WhatsApp</p>
+    </div>
+    
+    <div class="qr-card">
+        <p style="font-weight: bold; font-size: 16px; margin-bottom: 10px; color: #0284c7;">Aponte a câmera do celular para falar agora:</p>
+        <img class="qr-img" src="{qr_url}" alt="QR Code WhatsApp Portaria">
+        <p style="font-size: 14px; font-weight: bold; margin-top: 12px; color: #334155;">WhatsApp: +{whats_limpo}</p>
+        <p style="font-size: 12px; color: #64748b; margin-top: 4px;">Link direto: <strong>{link_wa}</strong></p>
+    </div>
+    
+    <div class="features">
+        <div class="feat-box">
+            <div class="feat-title">🔇 Barulho & Conflito</div>
+            <div class="feat-desc">Registre incômodos sonoros com <strong>100% de sigilo</strong>. Sua identidade nunca é revelada ao vizinho.</div>
+        </div>
+        <div class="feat-box">
+            <div class="feat-title">📅 Áreas Comuns</div>
+            <div class="feat-desc">Agende churrasqueira, salão de festas e quadra em segundos sem precisar de livro físico.</div>
+        </div>
+        <div class="feat-box">
+            <div class="feat-title">📦 Achados & Perdidos</div>
+            <div class="feat-desc">Consulte em tempo real objetos e encomendas deixados na portaria do condomínio.</div>
+        </div>
+    </div>
+    
+    <div class="alert">
+        <strong>📱 SEM PRECISAR BAIXAR NENHUM APLICATIVO!</strong><br>
+        O ConciliaZap funciona 100% pelo seu WhatsApp que já está instalado no celular. Rápido, seguro e disponível 24 horas por dia.
+    </div>
+    
+    <div class="footer">
+        {nome_condo} • Tecnologia ConciliaZap 24/7 • Emissão em {datetime.now().strftime("%d/%m/%Y")}
+    </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html_page)
 
 # --- 6. GESTÃO DE MORADORES E IMPORTAÇÃO EM LOTE ---
 @app.get("/api/moradores")
