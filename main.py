@@ -344,6 +344,10 @@ def inicializar_banco():
     for k, v in configs_padrao:
         cursor.execute("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES (?, ?)", (k, v))
         
+    # Força atualização permanente do nome oficial do Condomínio 1
+    cursor.execute("UPDATE condominios SET nome = 'Condomínio Colinas de Campo Grande', slug = 'colinas-de-campo-grande' WHERE id = 1")
+    cursor.execute("UPDATE configuracoes SET valor = 'Condomínio Colinas de Campo Grande' WHERE chave = 'nome_condominio'")
+        
     conn.commit()
     conn.close()
 
