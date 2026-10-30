@@ -97,31 +97,46 @@ async function carregarStatusAssinatura() {
         const badgeCiclo = document.getElementById("badgeCicloStatus");
 
         if (sub.ativo) {
-            if (badgeText) badgeText.innerText = `Assinatura Ativa (${sub.dias_restantes}d)`;
-            if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+            const isBonus = sub.is_bonus_trial;
+            const badgeTitle = isBonus ? `🎁 Bônus Grátis (${sub.dias_restantes}d)` : `Assinatura Ativa (${sub.dias_restantes}d)`;
+            if (badgeText) badgeText.innerText = badgeTitle;
+            if (dot) dot.className = isBonus ? "w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse" : "w-2.5 h-2.5 rounded-full bg-emerald-500";
             if (banner) banner.classList.add("hidden");
             if (textoCiclo) {
-                textoCiclo.innerHTML = `Plano <strong>${sub.plano_ativo}</strong> ativo até <strong>${sub.plano_expira_formatado}</strong> (Restam ${sub.dias_restantes} dias corridos)`;
+                if (isBonus) {
+                    textoCiclo.innerHTML = `🎁 <strong>Bônus de Boas-Vindas (30 Dias Grátis)</strong> ativo até <strong>${sub.plano_expira_formatado}</strong> para conhecer o projeto • Restam <strong>${sub.dias_restantes} dias corridos</strong> (após esse prazo, o serviço será suspenso sem pagamento)`;
+                } else {
+                    textoCiclo.innerHTML = `Plano <strong>${sub.plano_ativo}</strong> ativo até <strong>${sub.plano_expira_formatado}</strong> (Restam ${sub.dias_restantes} dias corridos)`;
+                }
             }
-            if (iconCiclo) iconCiclo.className = "w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl shadow-sm";
+            if (iconCiclo) iconCiclo.className = isBonus 
+                ? "w-11 h-11 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-xl shadow-sm"
+                : "w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl shadow-sm";
             if (badgeCiclo) {
-                badgeCiclo.className = "text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200";
-                badgeCiclo.innerText = "Ciclo Ativo: 30 Dias Corridos";
+                if (isBonus) {
+                    badgeCiclo.className = "text-[10px] font-black uppercase tracking-wider text-purple-800 bg-purple-50 px-2 py-0.5 rounded border border-purple-200";
+                    badgeCiclo.innerText = "Bônus de Boas-Vindas: 30 Dias Grátis";
+                } else {
+                    badgeCiclo.className = "text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200";
+                    badgeCiclo.innerText = "Ciclo Ativo: 30 Dias Corridos";
+                }
             }
         } else {
-            if (badgeText) badgeText.innerText = "Bloqueado (Assinatura Vencida)";
+            const isBonus = sub.is_bonus_trial;
+            const statusMsg = isBonus ? "Bônus 30 Dias Encerrado (Serviço Suspenso)" : "Assinatura Vencida (Serviço Suspenso)";
+            if (badgeText) badgeText.innerText = statusMsg;
             if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-red-500 animate-ping";
             if (banner) banner.classList.remove("hidden");
             if (bannerData) {
                 bannerData.innerText = sub.plano_expira_formatado ? `Venceu em ${sub.plano_expira_formatado}` : "Aguardando pagamento mensal";
             }
             if (textoCiclo) {
-                textoCiclo.innerHTML = `<span class="text-red-600 font-extrabold">Assinatura Expirada / Bloqueada</span> • Venceu em ${sub.plano_expira_formatado || 'período recente'}`;
+                textoCiclo.innerHTML = `<span class="text-red-600 font-extrabold">${isBonus ? 'Bônus de 30 Dias Encerrado • Serviço Suspenso' : 'Assinatura Expirada / Bloqueada'}</span> • Venceu em ${sub.plano_expira_formatado || 'período recente'}. Realize o pagamento mensal para reativar o ConciliaZap.`;
             }
             if (iconCiclo) iconCiclo.className = "w-11 h-11 rounded-xl bg-red-100 text-red-700 flex items-center justify-center text-xl shadow-sm";
             if (badgeCiclo) {
                 badgeCiclo.className = "text-[10px] font-black uppercase tracking-wider text-red-800 bg-red-50 px-2 py-0.5 rounded border border-red-200";
-                badgeCiclo.innerText = "Acesso Bloqueado: 30 Dias Vencidos";
+                badgeCiclo.innerText = isBonus ? "Bônus Encerrado: Serviço Suspenso" : "Acesso Bloqueado: 30 Dias Vencidos";
             }
         }
     } catch (e) {

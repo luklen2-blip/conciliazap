@@ -546,6 +546,12 @@ def verificar_status_assinatura(condominio_id: int = 1) -> dict:
         cursor.execute("SELECT valor FROM configuracoes WHERE chave = 'link_kiwify'")
         cfg_link = cursor.fetchone()
     link_kiwify = (cfg_link["valor"] if cfg_link else None) or "https://pay.kiwify.com.br/mByEbbl"
+    
+    # Verifica se já houve algum pagamento confirmado para este condomínio
+    cursor.execute("SELECT COUNT(*) FROM cobrancas_pix WHERE condominio_id = ? AND status = 'PAGO'", (condominio_id,))
+    total_pagos = cursor.fetchone()[0]
+    is_bonus_trial = (total_pagos == 0)
+    
     conn.close()
     
     if not condo:
@@ -582,25 +588,37 @@ def verificar_status_assinatura(condominio_id: int = 1) -> dict:
         
         if agora <= dt_expira:
             dias_restantes = (dt_expira - agora).days + 1
+            plano_exibido = "Bônus 30 Dias (Degustação Grátis)" if is_bonus_trial else plano_nome
             return {
                 "condominio_id": condo["id"],
                 "nome": condo["nome"],
-                "plano_ativo": plano_nome,
+                "plano_ativo": plano_exibido,
                 "ativo": True,
                 "status": "ativa",
+                "is_bonus_trial": is_bonus_trial,
+                "bonus_dias_total": 30,
                 "dias_restantes": dias_restantes,
                 "plano_expira_em": dt_expira.strftime("%Y-%m-%d %H:%M:%S"),
                 "plano_expira_formatado": dt_expira.strftime("%d/%m/%Y"),
+                "mensagem_bonus": f"🎁 Bônus de 30 dias grátis ativo para conhecer o projeto! Restam {dias_restantes} dias corridos antes da primeira renovação.",
                 "link_kiwify": link_kiwify
             }
         else:
+            motivo_expirado = (
+                f"Período de bônus gratuito de 30 dias corridos para conhecer o projeto encerrado em {dt_expira.strftime('%d/%m/%Y')}. "
+                "Serviço suspenso. Para continuar utilizando sem interrupções, realize o primeiro pagamento mensal."
+            ) if is_bonus_trial else (
+                f"Período de 30 dias corridos encerrado em {dt_expira.strftime('%d/%m/%Y')}. Sistema aguardando renovação mensal."
+            )
             return {
                 "condominio_id": condo["id"],
                 "nome": condo["nome"],
                 "plano_ativo": plano_nome,
                 "ativo": False,
                 "status": "expirada",
-                "motivo": "Período de 30 dias corridos encerrado. Sistema aguardando renovação mensal.",
+                "is_bonus_trial": is_bonus_trial,
+                "servico_suspenso": True,
+                "motivo": motivo_expirado,
                 "dias_restantes": 0,
                 "plano_expira_em": dt_expira.strftime("%Y-%m-%d %H:%M:%S"),
                 "plano_expira_formatado": dt_expira.strftime("%d/%m/%Y"),
@@ -713,19 +731,27 @@ async def processar_mensagem_whatsapp(request: Request):
     bloco = morador["bloco"]
     condo_id = morador["condominio_id"] if "condominio_id" in morador.keys() else 1
     
-    # Validação da Assinatura Mensal de 30 Dias Corridos do Condomínio
+    # Validação da Assinatura Mensal de 30 Dias Corridos do Condomínio (ou Bônus de 30 Dias)
     status_sub = verificar_status_assinatura(condo_id)
     if not status_sub["ativo"]:
         link_pgto = status_sub.get("link_kiwify") or "https://pay.kiwify.com.br/mByEbbl"
         dt_venc = status_sub.get("plano_expira_formatado") or "período recente"
+        is_bonus = status_sub.get("is_bonus_trial", False)
+        
+        texto_motivo = (
+            f"O período de bônus gratuito de 30 dias corridos para conhecer o projeto encerrou em *{dt_venc}* e o serviço foi suspenso."
+            if is_bonus else
+            f"O ciclo de 30 dias corridos encerrou em *{dt_venc}* e as funções automatizadas estão temporariamente suspensas."
+        )
+        
         return {
             "status": "subscription_expired",
             "reply": (
-                "⚠️ *ConciliaZap — Assinatura Mensal Expirada*\n\n"
-                f"Olá {nome}! O sistema deste condomínio teve o ciclo de 30 dias corridos encerrado em *{dt_venc}* e as funções automatizadas estão temporariamente suspensas.\n\n"
-                f"Para reativar o ConciliaZap imediatamente por mais 30 dias, a administração deve efetuar o pagamento mensal na Kiwify:\n"
+                "⚠️ *ConciliaZap — Assinatura Mensal Expirada (Serviço Suspenso)*\n\n"
+                f"Olá {nome}! {texto_motivo}\n\n"
+                f"Para reativar o ConciliaZap imediatamente por mais 30 dias corridos, a administração deve efetuar o pagamento mensal na Kiwify:\n"
                 f"👉 {link_pgto}\n\n"
-                f"Após a confirmação do pagamento, o robô é reativado automaticamente 24/7."
+                f"Após a confirmação do pagamento, o robô e o painel são reativados automaticamente 24/7."
             )
         }
     
