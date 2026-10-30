@@ -1098,12 +1098,12 @@ async def gerar_cartaz_elevador_html(request: Request, condominio_id: Optional[i
     cid = condominio_id or tenant_id or 1
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT chave, valor FROM configuracoes WHERE chave IN ('nome_condominio', 'sindico_whatsapp') AND condominio_id = ?", (cid,))
+    cursor.execute("SELECT chave, valor FROM configuracoes WHERE chave IN ('nome_condominio', 'whatsapp_portaria', 'sindico_whatsapp') AND condominio_id = ?", (cid,))
     cfg = {r["chave"]: r["valor"] for r in cursor.fetchall()}
     conn.close()
     
     nome_condo = html.escape(cfg.get("nome_condominio") or "Condomínio Colinas de Campo Grande")
-    whats = cfg.get("sindico_whatsapp") or "5511999990001"
+    whats = cfg.get("whatsapp_portaria") or cfg.get("sindico_whatsapp") or "5511999990001"
     whats_limpo = sanitizar_telefone(whats)
     
     link_wa = f"https://wa.me/{whats_limpo}?text={urllib.parse.quote('Olá ConciliaZap, sou morador!')}"

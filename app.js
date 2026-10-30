@@ -989,6 +989,9 @@ async function carregarConfiguracoes() {
             document.getElementById("headerCondoName").innerText = cfg.nome_condominio;
         }
         if (cfg.horario_silencio) document.getElementById("cfgHorarioSilencio").value = cfg.horario_silencio;
+        if (document.getElementById("cfgWhatsPortaria")) {
+            document.getElementById("cfgWhatsPortaria").value = cfg.whatsapp_portaria || cfg.sindico_whatsapp || "5511999990001";
+        }
         if (cfg.sindico_whatsapp) document.getElementById("cfgSindicoWhats").value = cfg.sindico_whatsapp;
         if (cfg.evolution_api_url) document.getElementById("cfgApiUrl").value = cfg.evolution_api_url;
         if (cfg.whatsapp_instancia) document.getElementById("cfgInstancia").value = cfg.whatsapp_instancia;
@@ -1026,6 +1029,7 @@ async function salvarConfiguracoes() {
     const payload = {
         nome_condominio: document.getElementById("cfgNomeCondominio").value.trim(),
         horario_silencio: document.getElementById("cfgHorarioSilencio").value.trim(),
+        whatsapp_portaria: (document.getElementById("cfgWhatsPortaria")?.value || "").trim(),
         sindico_whatsapp: document.getElementById("cfgSindicoWhats").value.trim(),
         evolution_api_url: document.getElementById("cfgApiUrl").value.trim(),
         whatsapp_instancia: document.getElementById("cfgInstancia").value.trim(),
@@ -1072,7 +1076,7 @@ function exibirToast(msg) {
 // --- DIVULGAÇÃO AOS MORADORES (GRUPO DE WHATSAPP & CARTAZ) ---
 function abrirModalDivulgacao() {
     const nomeCondo = document.getElementById("headerCondoName")?.innerText || "Condomínio Colinas de Campo Grande";
-    const whats = (document.getElementById("cfgSindicoWhats")?.value || "5511999990001").replace(/\D/g, "");
+    const whats = (document.getElementById("cfgWhatsPortaria")?.value || document.getElementById("cfgSindicoWhats")?.value || "5511999990001").replace(/\D/g, "");
     const linkWa = `https://wa.me/${whats}?text=Ol%C3%A1%20ConciliaZap!%20Sou%20morador`;
 
     const texto = `📢 *COMUNICADO OFICIAL DO CONDOMÍNIO*

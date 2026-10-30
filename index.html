@@ -539,14 +539,27 @@
                         <input type="text" id="cfgNomeCondominio" class="w-full text-sm border border-slate-300 rounded-lg p-2.5">
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label class="block font-bold text-slate-700 uppercase mb-1">Horário de Silêncio Oficial:</label>
-                            <input type="text" id="cfgHorarioSilencio" class="w-full text-sm border border-slate-300 rounded-lg p-2.5">
+                            <label class="block font-bold text-slate-700 uppercase mb-1 text-[11px]">Horário de Silêncio Oficial:</label>
+                            <input type="text" id="cfgHorarioSilencio" class="w-full text-sm border border-slate-300 rounded-lg p-2.5" placeholder="22:00 às 08:00">
+                            <span class="text-[10px] text-slate-400">Regra citada automaticamente pelo robô</span>
                         </div>
                         <div>
-                            <label class="block font-bold text-slate-700 uppercase mb-1">WhatsApp do Síndico / Moderador:</label>
-                            <input type="text" id="cfgSindicoWhats" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
+                            <label class="block font-bold text-emerald-800 uppercase mb-1 text-[11px] flex items-center space-x-1">
+                                <i class="fa-brands fa-whatsapp text-emerald-600"></i>
+                                <span>WhatsApp da Portaria Digital (Robô):</span>
+                            </label>
+                            <input type="text" id="cfgWhatsPortaria" class="w-full text-sm border border-emerald-300 rounded-lg p-2.5 font-mono bg-emerald-50/30" placeholder="Ex: 5511999990001">
+                            <span class="text-[10px] text-emerald-700 font-medium">Onde os moradores mandam mensagens (Cartaz e QR Code)</span>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-700 uppercase mb-1 text-[11px] flex items-center space-x-1">
+                                <i class="fa-solid fa-user-shield text-slate-600"></i>
+                                <span>WhatsApp Pessoal do Síndico (Alertas):</span>
+                            </label>
+                            <input type="text" id="cfgSindicoWhats" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono" placeholder="Ex: 5511988887777">
+                            <span class="text-[10px] text-slate-400">Onde o síndico recebe avisos de moderação (Sigiloso)</span>
                         </div>
                     </div>
 
