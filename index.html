@@ -615,17 +615,17 @@
                                 </span>
                                 <div>
                                     <label class="block font-bold text-slate-700 uppercase mb-1">Sua Chave PIX (CPF, CNPJ, Celular, E-mail ou Aleatória):</label>
-                                    <input type="text" id="cfgChavePix" placeholder="Ex: luciano@exemplo.com ou 11999999999" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
+                                    <input type="text" id="cfgChavePix" value="luklen2@gmail.com" placeholder="Ex: luklen2@gmail.com" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
                                 </div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label class="block font-bold text-slate-700 uppercase mb-1">Nome do Titular da Conta (Recebedor):</label>
-                                        <input type="text" id="cfgNomeRecebedor" placeholder="Ex: Luciano" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-semibold">
+                                        <input type="text" id="cfgNomeRecebedor" value="Luciano da Silva Sant Anna" placeholder="Ex: Luciano da Silva Sant Anna" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-semibold">
                                     </div>
                                     <div>
                                         <label class="block font-bold text-slate-700 uppercase mb-1">Cidade da Conta Bancária:</label>
-                                        <input type="text" id="cfgCidadeRecebedor" placeholder="Ex: SAO PAULO" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 uppercase font-semibold">
+                                        <input type="text" id="cfgCidadeRecebedor" value="RIO DE JANEIRO" placeholder="Ex: RIO DE JANEIRO" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 uppercase font-semibold">
                                     </div>
                                 </div>
                             </div>
@@ -654,21 +654,18 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block font-bold text-slate-700 uppercase mb-1">Outro Link de Cartão (Opcional - Mercado Pago / Asaas):</label>
-                                    <input type="text" id="cfgLinkCartao" placeholder="https://mpago.la/..." class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
+                                    <input type="text" id="cfgLinkCartao" value="" placeholder="Opcional - Vazio (Recebimento via Kiwify e PIX)" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
                                 </div>
                                 <div>
                                     <label class="block font-bold text-slate-700 uppercase mb-1">Seu WhatsApp Comercial para Vendas / Contratos:</label>
-                                    <input type="text" id="cfgWhatsVendas" placeholder="Ex: 5511999998888" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
+                                    <input type="text" id="cfgWhatsVendas" value="5521992113903" placeholder="Ex: 5521992113903" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 font-mono">
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="pt-4 flex justify-end">
-                        <button onclick="salvarConfiguracoes()" class="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold text-xs shadow transition flex items-center space-x-2">
-                            <i class="fa-solid fa-floppy-disk"></i>
-                            <span>Salvar Todas as Alterações</span>
-                        </button>
+                        <button id="btnSalvarConfig" onclick="salvarConfiguracoes(event)" class="px-6 py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold text-xs shadow transition flex items-center space-x-2 cursor-pointer"><i class="fa-solid fa-floppy-disk"></i><span id="btnSalvarConfigTexto">Salvar Todas as Alterações</span></button>
                     </div>
                 </div>
             </div>
@@ -1325,6 +1322,6 @@ Vanessa Prado, 5511977773333, 301, A"></textarea>
     </footer>
 
     <!-- Frontend Core Scripts -->
-    <script src="app.js"></script>
+    <script src="app.js?v=2.2.0"></script>
 </body>
 </html>

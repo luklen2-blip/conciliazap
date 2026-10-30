@@ -907,10 +907,10 @@ async function gerarPixPlano(nome, preco) {
             document.getElementById("modalBoletoLinha").value = data.boleto_linha || "";
         }
         if (document.getElementById("btnLinkCartaoExterno")) {
-            document.getElementById("btnLinkCartaoExterno").href = data.link_cartao || "https://mpago.la/pos/conciliazap";
+            const btnCartao = document.getElementById("btnLinkCartaoExterno"); if (btnCartao) { if (data.link_cartao) { btnCartao.href = data.link_cartao; btnCartao.classList.remove("hidden"); } else { btnCartao.classList.add("hidden"); } }
         }
         if (document.getElementById("btnZapComercial")) {
-            document.getElementById("btnZapComercial").href = data.whatsapp_link || `https://wa.me/${data.whatsapp_vendas || '5511999998888'}`;
+            document.getElementById("btnZapComercial").href = data.whatsapp_link || `https://wa.me/${data.whatsapp_vendas || '5521992113903'}`;
         }
 
         selecionarFormaPagamento('kiwify');
@@ -985,25 +985,35 @@ async function carregarConfiguracoes() {
         const res = await fetch("/api/config");
         const cfg = await res.json();
         if (cfg.nome_condominio) {
-            document.getElementById("cfgNomeCondominio").value = cfg.nome_condominio;
-            document.getElementById("headerCondoName").innerText = cfg.nome_condominio;
+            if (document.getElementById("cfgNomeCondominio")) document.getElementById("cfgNomeCondominio").value = cfg.nome_condominio;
+            if (document.getElementById("headerCondoName")) document.getElementById("headerCondoName").innerText = cfg.nome_condominio;
         }
-        if (cfg.horario_silencio) document.getElementById("cfgHorarioSilencio").value = cfg.horario_silencio;
+        if (cfg.horario_silencio && document.getElementById("cfgHorarioSilencio")) {
+            document.getElementById("cfgHorarioSilencio").value = cfg.horario_silencio;
+        }
         if (document.getElementById("cfgWhatsPortaria")) {
-            document.getElementById("cfgWhatsPortaria").value = cfg.whatsapp_portaria || cfg.sindico_whatsapp || "5511999990001";
+            document.getElementById("cfgWhatsPortaria").value = cfg.whatsapp_portaria || cfg.sindico_whatsapp || "5521992113903";
         }
-        if (cfg.sindico_whatsapp) document.getElementById("cfgSindicoWhats").value = cfg.sindico_whatsapp;
-        if (cfg.evolution_api_url) document.getElementById("cfgApiUrl").value = cfg.evolution_api_url;
-        if (cfg.whatsapp_instancia) document.getElementById("cfgInstancia").value = cfg.whatsapp_instancia;
-        if (cfg.evolution_api_key) document.getElementById("cfgApiKey").value = cfg.evolution_api_key;
+        if (document.getElementById("cfgSindicoWhats")) {
+            document.getElementById("cfgSindicoWhats").value = cfg.sindico_whatsapp || "5521992113903";
+        }
+        if (document.getElementById("cfgApiUrl")) {
+            document.getElementById("cfgApiUrl").value = cfg.evolution_api_url || "";
+        }
+        if (document.getElementById("cfgInstancia")) {
+            document.getElementById("cfgInstancia").value = cfg.whatsapp_instancia || "";
+        }
+        if (document.getElementById("cfgApiKey")) {
+            document.getElementById("cfgApiKey").value = cfg.evolution_api_key || "";
+        }
         
-        // Dados do PIX, Kiwify e Formas de Pagamento do Luciano
-        const chavePix = cfg.chave_pix || "luciano@conciliazap.com.br";
-        const nomeRecebedor = cfg.nome_recebedor || "Luciano";
-        const cidadeRecebedor = cfg.cidade_recebedor || "SAO PAULO";
-        const linkCartao = cfg.link_cartao || "https://mpago.la/pos/conciliazap";
+        // Dados Oficiais do PIX, Kiwify e Formas de Pagamento do Luciano
+        const chavePix = cfg.chave_pix || "luklen2@gmail.com";
+        const nomeRecebedor = cfg.nome_recebedor || "Luciano da Silva Sant Anna";
+        const cidadeRecebedor = cfg.cidade_recebedor || "RIO DE JANEIRO";
+        const linkCartao = cfg.link_cartao || "";
         const linkKiwify = cfg.link_kiwify || "https://pay.kiwify.com.br/mByEbbl";
-        const whatsVendas = cfg.whatsapp_vendas || "5511999998888";
+        const whatsVendas = cfg.whatsapp_vendas || "5521992113903";
 
         if (document.getElementById("cfgChavePix")) document.getElementById("cfgChavePix").value = chavePix;
         if (document.getElementById("cfgNomeRecebedor")) document.getElementById("cfgNomeRecebedor").value = nomeRecebedor;
@@ -1025,39 +1035,101 @@ async function carregarConfiguracoes() {
     }
 }
 
-async function salvarConfiguracoes() {
+async function salvarConfiguracoes(event) {
+    if (event) event.preventDefault();
+    
+    const btn = document.getElementById("btnSalvarConfig") || (event ? event.currentTarget : null);
+    const btnTexto = document.getElementById("btnSalvarConfigTexto");
+
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add("opacity-75");
+        if (btnTexto) {
+            btnTexto.innerText = "Salvando alterações...";
+        } else {
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Salvando alterações...</span>`;
+        }
+    }
+
     const payload = {
-        nome_condominio: document.getElementById("cfgNomeCondominio").value.trim(),
-        horario_silencio: document.getElementById("cfgHorarioSilencio").value.trim(),
-        whatsapp_portaria: (document.getElementById("cfgWhatsPortaria")?.value || "").trim(),
-        sindico_whatsapp: document.getElementById("cfgSindicoWhats").value.trim(),
-        evolution_api_url: document.getElementById("cfgApiUrl").value.trim(),
-        whatsapp_instancia: document.getElementById("cfgInstancia").value.trim(),
-        evolution_api_key: document.getElementById("cfgApiKey").value.trim(),
-        chave_pix: (document.getElementById("cfgChavePix")?.value || "").trim(),
-        nome_recebedor: (document.getElementById("cfgNomeRecebedor")?.value || "Luciano").trim(),
-        cidade_recebedor: (document.getElementById("cfgCidadeRecebedor")?.value || "SAO PAULO").trim(),
+        nome_condominio: (document.getElementById("cfgNomeCondominio")?.value || "Condomínio Colinas de Campo Grande").trim(),
+        horario_silencio: (document.getElementById("cfgHorarioSilencio")?.value || "22:00 às 08:00").trim(),
+        whatsapp_portaria: (document.getElementById("cfgWhatsPortaria")?.value || document.getElementById("cfgSindicoWhats")?.value || "5521992113903").trim(),
+        sindico_whatsapp: (document.getElementById("cfgSindicoWhats")?.value || "5521992113903").trim(),
+        evolution_api_url: (document.getElementById("cfgApiUrl")?.value || "").trim(),
+        whatsapp_instancia: (document.getElementById("cfgInstancia")?.value || "").trim(),
+        evolution_api_key: (document.getElementById("cfgApiKey")?.value || "").trim(),
+        chave_pix: (document.getElementById("cfgChavePix")?.value || "luklen2@gmail.com").trim(),
+        nome_recebedor: (document.getElementById("cfgNomeRecebedor")?.value || "Luciano da Silva Sant Anna").trim(),
+        cidade_recebedor: (document.getElementById("cfgCidadeRecebedor")?.value || "RIO DE JANEIRO").trim(),
         link_cartao: (document.getElementById("cfgLinkCartao")?.value || "").trim(),
-        link_kiwify: (document.getElementById("cfgLinkKiwify")?.value || "").trim(),
-        whatsapp_vendas: (document.getElementById("cfgWhatsVendas")?.value || "").trim()
+        link_kiwify: (document.getElementById("cfgLinkKiwify")?.value || "https://pay.kiwify.com.br/mByEbbl").trim(),
+        whatsapp_vendas: (document.getElementById("cfgWhatsVendas")?.value || "5521992113903").trim()
     };
 
     try {
-        await fetch("/api/config", {
+        const res = await fetch("/api/config", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "X-User-Role": "sindico"
+            },
             body: JSON.stringify(payload)
         });
-        document.getElementById("headerCondoName").innerText = payload.nome_condominio;
+
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || `Erro HTTP ${res.status}`);
+        }
+
+        // Atualiza cabeçalho e displays
+        if (document.getElementById("headerCondoName")) {
+            document.getElementById("headerCondoName").innerText = payload.nome_condominio;
+        }
         
         const infoPix = document.getElementById("infoPixDisplay");
         if (infoPix) {
             infoPix.innerHTML = `<strong class="text-emerald-950">${escapeHtml(payload.nome_recebedor)}</strong> • Kiwify: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[11px]">${escapeHtml(payload.link_kiwify)}</span> | PIX: <span class="font-mono bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">${escapeHtml(payload.chave_pix)}</span>`;
         }
 
-        exibirToast("✅ Configurações e Link Kiwify salvos com sucesso!");
+        // Feedback visual de sucesso imediato no botão
+        if (btn) {
+            btn.classList.remove("bg-brand-600", "hover:bg-brand-500");
+            btn.classList.add("bg-emerald-600", "hover:bg-emerald-500");
+            if (btnTexto) {
+                btnTexto.innerText = "Salvo com Sucesso!";
+            } else {
+                btn.innerHTML = `<i class="fa-solid fa-circle-check"></i><span>Salvo com Sucesso!</span>`;
+            }
+        }
+
+        exibirToast("✅ Dados do PIX, Kiwify e configurações salvos com sucesso!");
+
+        setTimeout(() => {
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove("opacity-75", "bg-emerald-600", "hover:bg-emerald-500");
+                btn.classList.add("bg-brand-600", "hover:bg-brand-500");
+                if (btnTexto) {
+                    btnTexto.innerText = "Salvar Todas as Alterações";
+                } else {
+                    btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i><span>Salvar Todas as Alterações</span>`;
+                }
+            }
+        }, 2500);
+
     } catch (e) {
-        alert("Erro ao salvar configurações.");
+        console.error("Erro ao salvar configurações:", e);
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove("opacity-75");
+            if (btnTexto) {
+                btnTexto.innerText = "Salvar Todas as Alterações";
+            } else {
+                btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i><span>Salvar Todas as Alterações</span>`;
+            }
+        }
+        alert("Erro ao salvar configurações: " + (e.message || "Tente novamente."));
     }
 }
 

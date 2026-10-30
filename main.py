@@ -129,9 +129,9 @@ class OcorrenciaDecisao(BaseModel):
 class PixRequest(BaseModel):
     plano_nome: str
     valor: float
-    chave_pix: Optional[str] = "contato@conciliazap.com.br"
-    nome_recebedor: Optional[str] = "ConciliaZap Solucoes Ltda"
-    cidade: Optional[str] = "SAO PAULO"
+    chave_pix: Optional[str] = "luklen2@gmail.com"
+    nome_recebedor: Optional[str] = "Luciano da Silva Sant Anna"
+    cidade: Optional[str] = "RIO DE JANEIRO"
     condominio_id: Optional[int] = 1
 
 class PixConfirmRequest(BaseModel):
@@ -372,7 +372,14 @@ def inicializar_banco():
         ("whatsapp_instancia", "ConciliaZap-Bot"),
         ("evolution_api_url", "https://api.meucondominio.com.br"),
         ("evolution_api_key", "secret-key-demo-xyz"),
-        ("sindico_whatsapp", "5511999990001")
+        ("whatsapp_portaria", "5521992113903"),
+        ("sindico_whatsapp", "5521992113903"),
+        ("chave_pix", "luklen2@gmail.com"),
+        ("nome_recebedor", "Luciano da Silva Sant Anna"),
+        ("cidade_recebedor", "RIO DE JANEIRO"),
+        ("link_cartao", ""),
+        ("link_kiwify", "https://pay.kiwify.com.br/mByEbbl"),
+        ("whatsapp_vendas", "5521992113903")
     ]
     for k, v in configs_padrao:
         cursor.execute("INSERT OR IGNORE INTO configuracoes (condominio_id, chave, valor) VALUES (1, ?, ?)", (k, v))
@@ -383,6 +390,22 @@ def inicializar_banco():
     cursor.execute("UPDATE condominios SET nome = 'Condomínio Solar das Palmeiras', slug = 'palmeiras' WHERE id = 2")
     cursor.execute("UPDATE configuracoes SET valor = 'Condomínio Colinas de Campo Grande' WHERE chave = 'nome_condominio' AND condominio_id = 1")
     cursor.execute("UPDATE configuracoes SET valor = 'Condomínio Solar das Palmeiras' WHERE chave = 'nome_condominio' AND condominio_id = 2")
+
+    # Força atualização permanente dos dados oficiais do Luciano (PIX, Kiwify e WhatsApp)
+    dados_oficiais = [
+        ("chave_pix", "luklen2@gmail.com"),
+        ("nome_recebedor", "Luciano da Silva Sant Anna"),
+        ("cidade_recebedor", "RIO DE JANEIRO"),
+        ("link_cartao", ""),
+        ("link_kiwify", "https://pay.kiwify.com.br/mByEbbl"),
+        ("whatsapp_vendas", "5521992113903"),
+        ("whatsapp_portaria", "5521992113903"),
+        ("sindico_whatsapp", "5521992113903")
+    ]
+    for k, v in dados_oficiais:
+        cursor.execute("INSERT OR REPLACE INTO configuracoes (condominio_id, chave, valor) VALUES (1, ?, ?)", (k, v))
+        cursor.execute("INSERT OR REPLACE INTO configuracoes (condominio_id, chave, valor) VALUES (2, ?, ?)", (k, v))
+
         
     conn.commit()
     conn.close()
@@ -1562,12 +1585,12 @@ async def gerar_pix_cobranca(req: PixRequest):
     cursor.execute("SELECT chave, valor FROM configuracoes WHERE chave IN ('chave_pix', 'nome_recebedor', 'cidade_recebedor', 'link_cartao', 'whatsapp_vendas', 'link_kiwify')")
     configs = {r["chave"]: r["valor"] for r in cursor.fetchall()}
     
-    chave_final = configs.get("chave_pix") or req.chave_pix or "luciano@conciliazap.com.br"
-    nome_final = configs.get("nome_recebedor") or req.nome_recebedor or "Luciano"
-    cidade_final = configs.get("cidade_recebedor") or req.cidade or "SAO PAULO"
-    link_cartao = configs.get("link_cartao") or "https://mpago.la/pos/conciliazap"
+    chave_final = configs.get("chave_pix") or req.chave_pix or "luklen2@gmail.com"
+    nome_final = configs.get("nome_recebedor") or req.nome_recebedor or "Luciano da Silva Sant Anna"
+    cidade_final = configs.get("cidade_recebedor") or req.cidade or "RIO DE JANEIRO"
+    link_cartao = configs.get("link_cartao") or ""
     link_kiwify = configs.get("link_kiwify") or "https://pay.kiwify.com.br/mByEbbl"
-    whatsapp_vendas = configs.get("whatsapp_vendas") or "5511999998888"
+    whatsapp_vendas = configs.get("whatsapp_vendas") or "5521992113903"
     
     txid = f"CONCILIA{int(time.time())}{os.urandom(2).hex().upper()}"
     payload_emv = pix.gerar_pix_copia_e_cola(
@@ -1850,7 +1873,7 @@ async def obter_configuracoes(request: Request, condominio_id: Optional[int] = N
     return {r["chave"]: r["valor"] for r in rows}
 
 @app.post("/api/config")
-async def salvar_configuracoes(dados: Dict[str, str], request: Request, condominio_id: Optional[int] = None):
+async def salvar_configuracoes(dados: Dict[str, Any], request: Request, condominio_id: Optional[int] = None):
     tenant_id, role = validar_acesso_tenant(
         request, 
         recurso_condominio_id=condominio_id, 
@@ -1859,13 +1882,14 @@ async def salvar_configuracoes(dados: Dict[str, str], request: Request, condomin
     conn = get_db()
     cursor = conn.cursor()
     for k, v in dados.items():
+        v_str = "" if v is None else str(v).strip()
         cursor.execute("""
         INSERT OR REPLACE INTO configuracoes (condominio_id, chave, valor)
         VALUES (?, ?, ?)
-        """, (tenant_id, k, v))
+        """, (tenant_id, k, v_str))
     conn.commit()
     conn.close()
-    return {"status": "success", "mensagem": "Configurações salvas!"}
+    return {"status": "success", "mensagem": "Configurações salvas com sucesso!"}
 
 # --- 11. PÁGINAS LEGAIS E CONFORMIDADE (LGPD E TERMOS) ---
 @app.get("/termos", response_class=HTMLResponse)
