@@ -247,11 +247,14 @@ def inicializar_banco():
         FOREIGN KEY(condominio_id) REFERENCES condominios(id)
     )""")
     
-    # 6. Tabela de Configurações
+    # 6. Tabela de Configurações Multi-Tenant (Chave composta por Condomínio)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS configuracoes (
-        chave TEXT PRIMARY KEY,
-        valor TEXT
+        condominio_id INTEGER NOT NULL DEFAULT 1,
+        chave TEXT NOT NULL,
+        valor TEXT,
+        PRIMARY KEY (condominio_id, chave),
+        FOREIGN KEY (condominio_id) REFERENCES condominios(id)
     )""")
 
     # Migrações seguras de colunas existentes
@@ -265,8 +268,38 @@ def inicializar_banco():
     migrar_coluna("ocorrencias", "condominio_id INTEGER DEFAULT 1")
     migrar_coluna("reservas", "condominio_id INTEGER DEFAULT 1")
     migrar_coluna("achados_perdidos", "condominio_id INTEGER DEFAULT 1")
+    # Migração estrutural de configuracoes para chave composta (condominio_id, chave)
+    try:
+        cursor.execute("SELECT sql FROM sqlite_master WHERE name='configuracoes'")
+        sql_cfg = cursor.fetchone()
+        if sql_cfg and "PRIMARY KEY (condominio_id, chave)" not in sql_cfg[0]:
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS configuracoes_multi (
+                condominio_id INTEGER NOT NULL DEFAULT 1,
+                chave TEXT NOT NULL,
+                valor TEXT,
+                PRIMARY KEY (condominio_id, chave),
+                FOREIGN KEY (condominio_id) REFERENCES condominios(id)
+            )""")
+            cursor.execute("""
+            INSERT OR IGNORE INTO configuracoes_multi (condominio_id, chave, valor)
+            SELECT COALESCE(condominio_id, 1), chave, valor FROM configuracoes
+            """)
+            cursor.execute("DROP TABLE configuracoes")
+            cursor.execute("ALTER TABLE configuracoes_multi RENAME TO configuracoes")
+    except Exception:
+        pass
+
     migrar_coluna("condominios", "plano_expira_em DATETIME")
     migrar_coluna("condominios", "status_assinatura TEXT DEFAULT 'ativa'")
+    
+    # Índices de performance e integridade multi-tenant
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_moradores_condo ON moradores(condominio_id, telefone);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_ocorrencias_condo ON ocorrencias(condominio_id, status);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_reservas_condo ON reservas(condominio_id, data_reserva);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_achados_condo ON achados_perdidos(condominio_id, status);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_cobrancas_condo ON cobrancas_pix(condominio_id, txid);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_configs_condo ON configuracoes(condominio_id, chave);")
     
     # Condomínios de demonstração (Multiempresa)
     cursor.execute("SELECT COUNT(*) FROM condominios")
@@ -332,7 +365,7 @@ def inicializar_banco():
         VALUES (1, 'Chaveiro com controle de portão', 'Garagem Subsolo 1 (próximo à vaga 22)', 'Disponível')
         """)
 
-    # Configurações padrão
+    # Configurações padrão multi-tenant
     configs_padrao = [
         ("nome_condominio", "Condomínio Colinas de Campo Grande"),
         ("horario_silencio", "22:00 às 08:00"),
@@ -342,11 +375,14 @@ def inicializar_banco():
         ("sindico_whatsapp", "5511999990001")
     ]
     for k, v in configs_padrao:
-        cursor.execute("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES (?, ?)", (k, v))
+        cursor.execute("INSERT OR IGNORE INTO configuracoes (condominio_id, chave, valor) VALUES (1, ?, ?)", (k, v))
+        cursor.execute("INSERT OR IGNORE INTO configuracoes (condominio_id, chave, valor) VALUES (2, ?, ?)", (k, v))
         
-    # Força atualização permanente do nome oficial do Condomínio 1
+    # Força atualização permanente do nome oficial do Condomínio 1 e Condomínio 2
     cursor.execute("UPDATE condominios SET nome = 'Condomínio Colinas de Campo Grande', slug = 'colinas-de-campo-grande' WHERE id = 1")
-    cursor.execute("UPDATE configuracoes SET valor = 'Condomínio Colinas de Campo Grande' WHERE chave = 'nome_condominio'")
+    cursor.execute("UPDATE condominios SET nome = 'Condomínio Solar das Palmeiras', slug = 'palmeiras' WHERE id = 2")
+    cursor.execute("UPDATE configuracoes SET valor = 'Condomínio Colinas de Campo Grande' WHERE chave = 'nome_condominio' AND condominio_id = 1")
+    cursor.execute("UPDATE configuracoes SET valor = 'Condomínio Solar das Palmeiras' WHERE chave = 'nome_condominio' AND condominio_id = 2")
         
     conn.commit()
     conn.close()
@@ -388,13 +424,75 @@ def extrair_dados_mensagem(body: Any) -> tuple[str, str, str]:
     texto = body.get("text") or body.get("mensagem") or body.get("body") or ""
     return msg_id, sender_phone, texto
 
-def buscar_morador_por_telefone(telefone: str):
+# Cache em memória para deduplicação de mensagens (idempotência de webhooks)
+MENSAGENS_PROCESSADAS_CACHE = set()
+
+def extrair_tenant_contexto(request: Request, recurso_condominio_id: Optional[int] = None) -> tuple[int, str]:
+    """
+    Extrai o ID do Condomínio (Tenant) e o Perfil (Role) da requisição com sanitização.
+    Prioridades para Tenant: Header X-Condominio-ID > Param condominio_id > Header X-Tenant-ID > Default 1
+    Prioridade para Role: Header X-User-Role > Param user_role > 'sindico'
+    """
+    role = (request.headers.get("X-User-Role") or request.query_params.get("user_role") or "sindico").strip().lower()
+    
+    header_condo = request.headers.get("X-Condominio-ID") or request.headers.get("X-Tenant-ID")
+    if header_condo and str(header_condo).isdigit():
+        tenant_id = int(header_condo)
+    elif recurso_condominio_id is not None and int(recurso_condominio_id) > 0:
+        tenant_id = int(recurso_condominio_id)
+    else:
+        tenant_id = 1
+        
+    return tenant_id, role
+
+def validar_acesso_tenant(
+    request: Request, 
+    recurso_condominio_id: Optional[int] = None, 
+    roles_permitidos: Optional[List[str]] = None
+) -> tuple[int, str]:
+    """
+    Enforce rigoroso de RBAC e prevenção contra BOLA/IDOR (Broken Object Level Authorization):
+    1. Bloqueia papéis sem permissão (ex: morador tentando acessar painel).
+    2. Bloqueia acesso cruzado entre condomínios (ex: Síndico de A tentando acessar dados de B).
+    3. Permite administração transversal apenas para admin_plataforma.
+    """
+    tenant_id, role = extrair_tenant_contexto(request, recurso_condominio_id)
+    
+    # Validação de perfil (RBAC)
+    if roles_permitidos:
+        roles_norm = [r.lower() for r in roles_permitidos]
+        if role not in roles_norm and role not in ["admin_plataforma", "admin_master"]:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"Acesso negado: Perfil '{role}' não possui permissão para executar esta operação."
+            )
+            
+    # Validação de isolamento horizontal (BOLA/IDOR Prevention)
+    if recurso_condominio_id is not None and int(recurso_condominio_id) != tenant_id:
+        if role not in ["admin_plataforma", "admin_master"]:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"Acesso negado: Violação de isolamento multi-tenant. O condomínio {tenant_id} não pode acessar dados do condomínio {recurso_condominio_id}."
+            )
+            
+    return tenant_id, role
+
+def buscar_morador_por_telefone(telefone: str, condominio_id: Optional[int] = None):
     tel_limpo = sanitizar_telefone(telefone)
     conn = get_db()
     cursor = conn.cursor()
-    # Tenta com 55 e sem 55
-    cursor.execute("SELECT id, nome, telefone, apartamento, bloco, tipo, condominio_id FROM moradores WHERE telefone = ? OR telefone LIKE ?", 
-                   (tel_limpo, f"%{tel_limpo[-8:]}"))
+    if condominio_id is not None:
+        cursor.execute("""
+        SELECT id, nome, telefone, apartamento, bloco, tipo, condominio_id 
+        FROM moradores 
+        WHERE (telefone = ? OR telefone LIKE ?) AND condominio_id = ?
+        """, (tel_limpo, f"%{tel_limpo[-8:]}", condominio_id))
+    else:
+        cursor.execute("""
+        SELECT id, nome, telefone, apartamento, bloco, tipo, condominio_id 
+        FROM moradores 
+        WHERE telefone = ? OR telefone LIKE ?
+        """, (tel_limpo, f"%{tel_limpo[-8:]}"))
     morador = cursor.fetchone()
     conn.close()
     return morador
@@ -441,9 +539,12 @@ def verificar_status_assinatura(condominio_id: int = 1) -> dict:
     cursor.execute("SELECT * FROM condominios WHERE id = ?", (condominio_id,))
     condo = cursor.fetchone()
     
-    # Recupera o link da Kiwify configurado
-    cursor.execute("SELECT valor FROM configuracoes WHERE chave = 'link_kiwify'")
+    # Recupera o link da Kiwify configurado por condomínio
+    cursor.execute("SELECT valor FROM configuracoes WHERE chave = 'link_kiwify' AND condominio_id = ?", (condominio_id,))
     cfg_link = cursor.fetchone()
+    if not cfg_link:
+        cursor.execute("SELECT valor FROM configuracoes WHERE chave = 'link_kiwify'")
+        cfg_link = cursor.fetchone()
     link_kiwify = (cfg_link["valor"] if cfg_link else None) or "https://pay.kiwify.com.br/mByEbbl"
     conn.close()
     
@@ -576,8 +677,29 @@ async def processar_mensagem_whatsapp(request: Request):
         body = {}
         
     msg_id, sender_phone, texto_raw = extrair_dados_mensagem(body)
+    
+    # Deduplicação de mensagens de webhook (Idempotência)
+    if msg_id and msg_id not in ["msg-auto", "msg-direct", "evo-msg", "zapi-msg"]:
+        if msg_id in MENSAGENS_PROCESSADAS_CACHE:
+            return {"status": "duplicate_ignored", "reply": "Mensagem já processada anteriormente (idempotência ativa)."}
+        MENSAGENS_PROCESSADAS_CACHE.add(msg_id)
+        if len(MENSAGENS_PROCESSADAS_CACHE) > 5000:
+            MENSAGENS_PROCESSADAS_CACHE.clear()
+
     telefone_limpo = sanitizar_telefone(sender_phone)
-    morador = buscar_morador_por_telefone(telefone_limpo)
+    
+    # Extrai tenant sugerido pelo webhook (header, query param ou identificador de instância)
+    header_condo = request.headers.get("X-Condominio-ID") or request.query_params.get("condominio_id")
+    condo_filtro = int(header_condo) if header_condo and str(header_condo).isdigit() else None
+    
+    if isinstance(body, dict):
+        instance_name = str(body.get("instance") or body.get("instanceName") or "").lower()
+        if "2" in instance_name or "palmeiras" in instance_name:
+            condo_filtro = 2
+        elif "1" in instance_name or "colinas" in instance_name:
+            condo_filtro = 1
+
+    morador = buscar_morador_por_telefone(telefone_limpo, condominio_id=condo_filtro)
     
     if not morador:
         return {
@@ -714,7 +836,14 @@ async def simular_envio_whatsapp(request: Request):
 
 # --- 4. GESTÃO DE OCORRÊNCIAS & PAINEL DO SÍNDICO ---
 @app.get("/api/ocorrencias")
-async def listar_ocorrencias(status: Optional[str] = None, condominio_id: Optional[int] = None):
+async def listar_ocorrencias(request: Request, status: Optional[str] = None, condominio_id: Optional[int] = None):
+    # Enforce RBAC e BOLA: Moradores são bloqueados do painel administrativo
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        recurso_condominio_id=condominio_id, 
+        roles_permitidos=["sindico", "administrador", "admin", "portaria", "admin_plataforma"]
+    )
+    
     conn = get_db()
     cursor = conn.cursor()
     query = """
@@ -724,9 +853,13 @@ async def listar_ocorrencias(status: Optional[str] = None, condominio_id: Option
     WHERE 1=1
     """
     params = []
-    if condominio_id:
+    if role not in ["admin_plataforma", "admin_master"]:
+        query += " AND o.condominio_id = ?"
+        params.append(tenant_id)
+    elif condominio_id:
         query += " AND o.condominio_id = ?"
         params.append(condominio_id)
+        
     if status and status != "Todas":
         query += " AND o.status = ?"
         params.append(status)
@@ -737,7 +870,7 @@ async def listar_ocorrencias(status: Optional[str] = None, condominio_id: Option
     
     lista = []
     for r in rows:
-        cid = r["condominio_id"] if "condominio_id" in r.keys() else 1
+        cid = r["condominio_id"] if "condominio_id" in r.keys() else tenant_id
         reincidencias = contar_reincidencias(r["apartamento_alvo"], r["bloco_alvo"], cid)
         item = dict(r)
         item["reincidencias_infrator"] = reincidencias
@@ -745,11 +878,16 @@ async def listar_ocorrencias(status: Optional[str] = None, condominio_id: Option
     return lista
 
 @app.post("/api/ocorrencias/{ocorrencia_id}/moderar")
-async def moderar_ocorrencia(ocorrencia_id: int, decisao: OcorrenciaDecisao):
+async def moderar_ocorrencia(ocorrencia_id: int, decisao: OcorrenciaDecisao, request: Request):
     """
     Ação de 1 clique do Síndico: Homologa o envio de Notificação/Advertência/Multa
     ou Rejeita/Arquiva a queixa, despersonalizando o conflito.
+    Portaria e Moradores não possuem permissão para moderar ocorrências ou aplicar multas.
     """
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        roles_permitidos=["sindico", "administrador", "admin", "admin_plataforma"]
+    )
     # Validações de limites e segurança (OWASP Input Validation)
     if decisao.status not in ["Aprovada", "Rejeitada", "Arquivada", "Pendente"]:
         raise HTTPException(status_code=400, detail="Status de moderação inválido. Valores aceitos: Aprovada, Rejeitada, Arquivada, Pendente.")
@@ -768,6 +906,15 @@ async def moderar_ocorrencia(ocorrencia_id: int, decisao: OcorrenciaDecisao):
     if not ocorrencia:
         conn.close()
         raise HTTPException(status_code=404, detail="Ocorrência não encontrada.")
+        
+    # Validação de Isolamento Multi-Tenant (BOLA/IDOR Prevention)
+    oc_condo = ocorrencia["condominio_id"] if "condominio_id" in ocorrencia.keys() else 1
+    if role not in ["admin_plataforma", "admin_master"] and oc_condo != tenant_id:
+        conn.close()
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Acesso negado: Ocorrência #{ocorrencia_id} pertence ao condomínio {oc_condo}, inacessível ao condomínio {tenant_id}."
+        )
         
     agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("""
@@ -813,7 +960,11 @@ async def moderar_ocorrencia(ocorrencia_id: int, decisao: OcorrenciaDecisao):
 
 # --- 5. GERAÇÃO DE LAUDO / ADVERTÊNCIA FORMAL EM FORMATO IMPRESSÃO / PDF ---
 @app.get("/api/ocorrencias/{ocorrencia_id}/laudo-html", response_class=HTMLResponse)
-async def gerar_laudo_formal_html(ocorrencia_id: int):
+async def gerar_laudo_formal_html(ocorrencia_id: int, request: Request):
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        roles_permitidos=["sindico", "administrador", "admin", "portaria", "admin_plataforma"]
+    )
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
@@ -827,6 +978,10 @@ async def gerar_laudo_formal_html(ocorrencia_id: int):
     
     if not oc:
         raise HTTPException(status_code=404, detail="Ocorrência não encontrada")
+        
+    oc_condo = oc["condominio_id"] if "condominio_id" in oc.keys() else 1
+    if role not in ["admin_plataforma", "admin_master"] and oc_condo != tenant_id:
+        raise HTTPException(status_code=403, detail="Acesso negado: Laudo pertence a outro condomínio.")
         
     # Sanitização anti-XSS de dados dinâmicos exibidos no documento
     safe_ap = html.escape(str(oc['apartamento_alvo'] or ''))
@@ -912,10 +1067,12 @@ async def gerar_laudo_formal_html(ocorrencia_id: int):
 
 # --- 5.1 CARTAZ OFICIAL IMPRIMÍVEL PARA ELEVADOR E PORTARIA (QR CODE) ---
 @app.get("/api/cartaz-elevador-html", response_class=HTMLResponse)
-async def gerar_cartaz_elevador_html():
+async def gerar_cartaz_elevador_html(request: Request, condominio_id: Optional[int] = None):
+    tenant_id, role = extrair_tenant_contexto(request, condominio_id)
+    cid = condominio_id or tenant_id or 1
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT chave, valor FROM configuracoes WHERE chave IN ('nome_condominio', 'sindico_whatsapp')")
+    cursor.execute("SELECT chave, valor FROM configuracoes WHERE chave IN ('nome_condominio', 'sindico_whatsapp') AND condominio_id = ?", (cid,))
     cfg = {r["chave"]: r["valor"] for r in cursor.fetchall()}
     conn.close()
     
@@ -993,22 +1150,29 @@ async def gerar_cartaz_elevador_html():
 
 # --- 6. GESTÃO DE MORADORES E IMPORTAÇÃO EM LOTE ---
 @app.get("/api/moradores")
-async def listar_moradores(condominio_id: Optional[int] = None):
+async def listar_moradores(request: Request, condominio_id: Optional[int] = None):
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        recurso_condominio_id=condominio_id, 
+        roles_permitidos=["sindico", "administrador", "admin", "portaria", "admin_plataforma"]
+    )
     conn = get_db()
     cursor = conn.cursor()
-    if condominio_id:
-        cursor.execute("SELECT * FROM moradores WHERE condominio_id = ? ORDER BY bloco ASC, apartamento ASC", (condominio_id,))
-    else:
+    if role in ["admin_plataforma", "admin_master"] and not condominio_id:
         cursor.execute("SELECT * FROM moradores ORDER BY bloco ASC, apartamento ASC")
+    else:
+        cursor.execute("SELECT * FROM moradores WHERE condominio_id = ? ORDER BY bloco ASC, apartamento ASC", (tenant_id,))
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
 @app.post("/api/moradores")
 async def cadastrar_morador(m: MoradorCreate, request: Request):
-    user_role = request.headers.get("X-User-Role", "sindico").lower()
-    if user_role not in ["sindico", "administrador", "admin"]:
-        raise HTTPException(status_code=403, detail="Apenas síndicos ou administradores têm permissão para cadastrar moradores.")
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        recurso_condominio_id=m.condominio_id, 
+        roles_permitidos=["sindico", "administrador", "admin", "admin_plataforma"]
+    )
         
     if not m.nome or len(m.nome.strip()) < 2 or len(m.nome) > 150:
         raise HTTPException(status_code=422, detail="Nome do morador deve conter entre 2 e 150 caracteres.")
@@ -1036,9 +1200,11 @@ async def cadastrar_morador(m: MoradorCreate, request: Request):
 
 @app.put("/api/moradores/{morador_id}")
 async def editar_morador(morador_id: int, m: MoradorUpdate, request: Request):
-    user_role = request.headers.get("X-User-Role", "sindico").lower()
-    if user_role not in ["sindico", "administrador", "admin"]:
-        raise HTTPException(status_code=403, detail="Apenas síndicos ou administradores têm permissão para editar moradores.")
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        recurso_condominio_id=m.condominio_id, 
+        roles_permitidos=["sindico", "administrador", "admin", "admin_plataforma"]
+    )
         
     conn = get_db()
     cursor = conn.cursor()
@@ -1047,6 +1213,11 @@ async def editar_morador(morador_id: int, m: MoradorUpdate, request: Request):
     if not morador:
         conn.close()
         raise HTTPException(status_code=404, detail="Morador não encontrado.")
+        
+    m_condo = morador["condominio_id"] if "condominio_id" in morador.keys() else 1
+    if role not in ["admin_plataforma", "admin_master"] and m_condo != tenant_id:
+        conn.close()
+        raise HTTPException(status_code=403, detail="Acesso negado: Morador pertence a outro condomínio.")
         
     novo_nome = m.nome if m.nome is not None else morador["nome"]
     novo_tel = sanitizar_telefone(m.telefone) if m.telefone is not None else morador["telefone"]
@@ -1109,30 +1280,47 @@ async def cadastrar_morador_teste(
 
 @app.delete("/api/moradores/{morador_id}")
 async def deletar_morador(morador_id: int, request: Request):
-    user_role = request.headers.get("X-User-Role", "sindico").lower()
-    if user_role not in ["sindico", "administrador", "admin"]:
-        raise HTTPException(status_code=403, detail="Apenas síndicos ou administradores têm permissão para remover moradores.")
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        roles_permitidos=["sindico", "administrador", "admin", "admin_plataforma"]
+    )
         
     conn = get_db()
     cursor = conn.cursor()
+    cursor.execute("SELECT * FROM moradores WHERE id = ?", (morador_id,))
+    morador = cursor.fetchone()
+    if not morador:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Morador não encontrado.")
+        
+    m_condo = morador["condominio_id"] if "condominio_id" in morador.keys() else 1
+    if role not in ["admin_plataforma", "admin_master"] and m_condo != tenant_id:
+        conn.close()
+        raise HTTPException(status_code=403, detail="Acesso negado: Morador pertence a outro condomínio.")
+        
     cursor.execute("DELETE FROM moradores WHERE id = ?", (morador_id,))
     conn.commit()
     conn.close()
     return {"status": "success", "mensagem": "Morador excluído do sistema."}
 
 @app.post("/api/moradores/importar-lote")
-async def importar_moradores_lote(lista: List[MoradorCreate]):
+async def importar_moradores_lote(lista: List[MoradorCreate], request: Request):
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        roles_permitidos=["sindico", "administrador", "admin", "admin_plataforma"]
+    )
     conn = get_db()
     cursor = conn.cursor()
     importados = 0
     ignorados = 0
     for m in lista:
         tel_limpo = sanitizar_telefone(m.telefone)
+        c_id = m.condominio_id or tenant_id
         try:
             cursor.execute("""
-            INSERT INTO moradores (nome, telefone, apartamento, bloco, tipo)
-            VALUES (?, ?, ?, ?, ?)
-            """, (m.nome, tel_limpo, m.apartamento, m.bloco.upper(), m.tipo))
+            INSERT INTO moradores (nome, telefone, apartamento, bloco, tipo, condominio_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """, (m.nome, tel_limpo, m.apartamento, m.bloco.upper(), m.tipo, c_id))
             importados += 1
         except sqlite3.IntegrityError:
             ignorados += 1
@@ -1142,18 +1330,29 @@ async def importar_moradores_lote(lista: List[MoradorCreate]):
 
 # --- 7. ÁREAS COMUNS E RESERVAS ---
 @app.get("/api/reservas")
-async def listar_reservas(condominio_id: Optional[int] = None):
+async def listar_reservas(request: Request, condominio_id: Optional[int] = None):
+    # Portaria e Síndico podem ver a agenda de reservas. Morador bloqueado do painel.
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        recurso_condominio_id=condominio_id, 
+        roles_permitidos=["sindico", "administrador", "admin", "portaria", "admin_plataforma"]
+    )
     conn = get_db()
     cursor = conn.cursor()
     query = """
     SELECT r.*, m.nome as morador_nome, m.apartamento, m.bloco, m.telefone
     FROM reservas r
     JOIN moradores m ON r.morador_id = m.id
+    WHERE 1=1
     """
     params = []
-    if condominio_id:
-        query += " WHERE r.condominio_id = ?"
+    if role not in ["admin_plataforma", "admin_master"]:
+        query += " AND r.condominio_id = ?"
+        params.append(tenant_id)
+    elif condominio_id:
+        query += " AND r.condominio_id = ?"
         params.append(condominio_id)
+        
     query += " ORDER BY r.data_reserva ASC"
     cursor.execute(query, params)
     rows = cursor.fetchall()
@@ -1203,9 +1402,24 @@ async def criar_reserva(reserva: ReservaCreate):
     return {"status": "success", "id": reserva_id, "mensagem": "Reserva confirmada com sucesso!"}
 
 @app.delete("/api/reservas/{reserva_id}")
-async def cancelar_reserva(reserva_id: int):
+async def cancelar_reserva(reserva_id: int, request: Request):
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        roles_permitidos=["sindico", "administrador", "admin", "portaria", "admin_plataforma"]
+    )
     conn = get_db()
     cursor = conn.cursor()
+    cursor.execute("SELECT * FROM reservas WHERE id = ?", (reserva_id,))
+    res = cursor.fetchone()
+    if not res:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Reserva não encontrada.")
+        
+    r_condo = res["condominio_id"] if "condominio_id" in res.keys() else 1
+    if role not in ["admin_plataforma", "admin_master"] and r_condo != tenant_id:
+        conn.close()
+        raise HTTPException(status_code=403, detail="Acesso negado: Reserva pertence a outro condomínio.")
+        
     cursor.execute("DELETE FROM reservas WHERE id = ?", (reserva_id,))
     conn.commit()
     conn.close()
@@ -1213,37 +1427,67 @@ async def cancelar_reserva(reserva_id: int):
 
 # --- 8. ACHADOS E PERDIDOS ---
 @app.get("/api/achados")
-async def listar_achados():
+async def listar_achados(request: Request, condominio_id: Optional[int] = None):
+    # Portaria e Síndico têm acesso a achados e perdidos
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        recurso_condominio_id=condominio_id, 
+        roles_permitidos=["sindico", "administrador", "admin", "portaria", "admin_plataforma"]
+    )
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM achados_perdidos ORDER BY id DESC")
+    if role in ["admin_plataforma", "admin_master"] and not condominio_id:
+        cursor.execute("SELECT * FROM achados_perdidos ORDER BY id DESC")
+    else:
+        cursor.execute("SELECT * FROM achados_perdidos WHERE condominio_id = ? ORDER BY id DESC", (tenant_id,))
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
 @app.post("/api/achados")
-async def registrar_achado(achado: AchadoCreate):
+async def registrar_achado(achado: AchadoCreate, request: Request):
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        recurso_condominio_id=achado.condominio_id, 
+        roles_permitidos=["sindico", "administrador", "admin", "portaria", "admin_plataforma"]
+    )
     # Validação de limites (OWASP Input Validation)
     if not achado.item or len(achado.item.strip()) < 2 or len(achado.item) > 150:
         raise HTTPException(status_code=422, detail="Descrição do item deve conter entre 2 e 150 caracteres.")
     if not achado.local_encontrado or len(achado.local_encontrado.strip()) < 2 or len(achado.local_encontrado) > 150:
         raise HTTPException(status_code=422, detail="Local encontrado deve conter entre 2 e 150 caracteres.")
 
+    condo_id = achado.condominio_id or tenant_id
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-    INSERT INTO achados_perdidos (item, local_encontrado, status)
-    VALUES (?, ?, 'Disponível')
-    """, (achado.item, achado.local_encontrado))
+    INSERT INTO achados_perdidos (item, local_encontrado, status, condominio_id)
+    VALUES (?, ?, 'Disponível', ?)
+    """, (achado.item, achado.local_encontrado, condo_id))
     item_id = cursor.lastrowid
     conn.commit()
     conn.close()
     return {"status": "success", "id": item_id, "mensagem": "Item registrado em Achados e Perdidos!"}
 
 @app.put("/api/achados/{item_id}/devolver")
-async def devolver_achado(item_id: int, devolvido_para: str = Body(..., embed=True)):
+async def devolver_achado(item_id: int, request: Request, devolvido_para: str = Body(..., embed=True)):
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        roles_permitidos=["sindico", "administrador", "admin", "portaria", "admin_plataforma"]
+    )
     conn = get_db()
     cursor = conn.cursor()
+    cursor.execute("SELECT * FROM achados_perdidos WHERE id = ?", (item_id,))
+    item = cursor.fetchone()
+    if not item:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Item não encontrado.")
+        
+    i_condo = item["condominio_id"] if "condominio_id" in item.keys() else 1
+    if role not in ["admin_plataforma", "admin_master"] and i_condo != tenant_id:
+        conn.close()
+        raise HTTPException(status_code=403, detail="Acesso negado: Item pertence a outro condomínio.")
+        
     cursor.execute("""
     UPDATE achados_perdidos SET status = 'Devolvido', devolvido_para = ? WHERE id = ?
     """, (devolvido_para, item_id))
@@ -1362,38 +1606,67 @@ async def webhook_kiwify(request: Request):
     commissions = payload.get("Commissions") if isinstance(payload.get("Commissions"), dict) else {}
     charge_amount = (commissions.get("charge_amount", 0) / 100.0) if commissions.get("charge_amount") else 199.00
     
-    agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Identificação do Tenant Alvo (Condomínio Contratante)
+    condo_id_alvo = 1
+    if "custom_fields" in payload and isinstance(payload["custom_fields"], dict):
+        cf = payload["custom_fields"]
+        condo_id_alvo = int(cf.get("condominio_id") or cf.get("tenant_id") or 1)
+    elif "metadata" in payload and isinstance(payload["metadata"], dict):
+        md = payload["metadata"]
+        condo_id_alvo = int(md.get("condominio_id") or md.get("tenant_id") or 1)
+    elif "condominio_id" in payload:
+        try:
+            condo_id_alvo = int(payload["condominio_id"])
+        except (ValueError, TypeError):
+            condo_id_alvo = 1
+
     conn = get_db()
     cursor = conn.cursor()
     
+    # Proteção de Idempotência: Se já foi pago, retorna sucesso sem duplicidade
+    cursor.execute("SELECT id, status, condominio_id FROM cobrancas_pix WHERE txid = ?", (order_id,))
+    cobranca_existente = cursor.fetchone()
+    if cobranca_existente and cobranca_existente["status"] == "PAGO" and order_status in ["paid", "approved", "completed", "pago"]:
+        conn.close()
+        return {
+            "status": "idempotent_ok",
+            "mensagem": f"Notificação Kiwify {order_id} já processada com sucesso anteriormente (idempotência ativa).",
+            "order_id": order_id,
+            "condominio_id": condo_id_alvo
+        }
+    
+    agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
     if order_status in ["paid", "approved", "completed", "pago"]:
-        expira_em = ativar_assinatura_30_dias(1, product_name, dias=30, conn_externa=conn)
+        expira_em = ativar_assinatura_30_dias(condo_id_alvo, product_name, dias=30, conn_externa=conn)
         
         cursor.execute("""
         INSERT OR REPLACE INTO cobrancas_pix (txid, condominio_id, plano, valor, status, pix_copia_e_cola, qr_code_url, pago_em)
-        VALUES (?, 1, ?, ?, 'PAGO', 'PAGAMENTO_VIA_KIWIFY', 'KIWIFY_CHECKOUT', ?)
-        """, (order_id, product_name, charge_amount, agora))
+        VALUES (?, ?, ?, ?, 'PAGO', 'PAGAMENTO_VIA_KIWIFY', 'KIWIFY_CHECKOUT', ?)
+        """, (order_id, condo_id_alvo, product_name, charge_amount, agora))
         conn.commit()
         conn.close()
         
         return {
             "status": "success",
-            "mensagem": f"Pagamento Kiwify processado com sucesso! Plano {product_name} ativado por 30 dias corridos para {customer_name}.",
+            "mensagem": f"Pagamento Kiwify processado com sucesso! Plano {product_name} ativado por 30 dias corridos para o Condomínio #{condo_id_alvo} ({customer_name}).",
             "order_id": order_id,
             "order_status": order_status,
+            "condominio_id": condo_id_alvo,
             "plano_expira_em": expira_em,
             "dias_validade": 30
         }
     elif order_status in ["refunded", "reembolsado", "chargeback"]:
         cursor.execute("UPDATE cobrancas_pix SET status = 'REEMBOLSADO' WHERE txid = ?", (order_id,))
         ontem = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
-        cursor.execute("UPDATE condominios SET plano_ativo = 'starter', status_assinatura = 'bloqueada', plano_expira_em = ? WHERE id = 1", (ontem,))
+        cursor.execute("UPDATE condominios SET plano_ativo = 'starter', status_assinatura = 'bloqueada', plano_expira_em = ? WHERE id = ?", (ontem, condo_id_alvo))
         conn.commit()
         conn.close()
         return {
             "status": "refunded",
-            "mensagem": "Reembolso Kiwify registrado. Condomínio bloqueado.",
-            "order_id": order_id
+            "mensagem": f"Reembolso Kiwify registrado. Condomínio #{condo_id_alvo} bloqueado.",
+            "order_id": order_id,
+            "condominio_id": condo_id_alvo
         }
     else:
         conn.close()
@@ -1447,21 +1720,35 @@ async def confirmar_pagamento_pix(req: PixConfirmRequest):
 
 # --- 9.1 GESTÃO DO PAYWALL E ASSINATURA 30 DIAS ---
 @app.get("/api/assinatura/status")
-async def rota_status_assinatura(condominio_id: Optional[int] = 1):
+async def rota_status_assinatura(request: Request, condominio_id: Optional[int] = 1):
     """
     Retorna o status da assinatura de 30 dias corridos, dias restantes e data de expiração.
     """
-    return verificar_status_assinatura(condominio_id or 1)
+    tenant_id, role = extrair_tenant_contexto(request, condominio_id)
+    cid = condominio_id or tenant_id or 1
+    status_info = verificar_status_assinatura(cid)
+    status_info["modelo_comercial"] = "assinatura_exclusiva_condominio"
+    status_info["cobranca_moradores"] = "isento_sem_cobranca_individual"
+    status_info["responsavel_financeiro"] = "administracao_sindico"
+    return status_info
 
 @app.post("/api/assinatura/renovar")
-async def rota_renovar_assinatura(req: AssinaturaRenovacao):
+async def rota_renovar_assinatura(req: AssinaturaRenovacao, request: Request):
     """
     Renova a assinatura do condomínio por 30 dias corridos a partir do pagamento.
+    Moradores são proibidos de contratar individualmente (Modelo B2B: Condomínio = Assinatura).
     """
-    expira = ativar_assinatura_30_dias(req.condominio_id or 1, req.plano or "Condomínio Pro", req.dias or 30)
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        recurso_condominio_id=req.condominio_id, 
+        roles_permitidos=["sindico", "administrador", "admin", "admin_plataforma"]
+    )
+    cid = req.condominio_id or tenant_id
+    expira = ativar_assinatura_30_dias(cid, req.plano or "Condomínio Pro", req.dias or 30)
     return {
         "status": "success",
-        "mensagem": f"Assinatura do condomínio ativada por {req.dias or 30} dias corridos!",
+        "condominio_id": cid,
+        "mensagem": f"Assinatura do condomínio #{cid} ativada por {req.dias or 30} dias corridos!",
         "plano_expira_em": expira
     }
 
@@ -1523,20 +1810,33 @@ async def criar_condominio(c: CondominioCreate):
 
 # --- 10. CONFIGURAÇÕES DO CONDOMÍNIO & WHATSAPP ---
 @app.get("/api/config")
-async def obter_configuracoes():
+async def obter_configuracoes(request: Request, condominio_id: Optional[int] = None):
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        recurso_condominio_id=condominio_id, 
+        roles_permitidos=["sindico", "administrador", "admin", "admin_plataforma"]
+    )
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT chave, valor FROM configuracoes")
+    cursor.execute("SELECT chave, valor FROM configuracoes WHERE condominio_id = ?", (tenant_id,))
     rows = cursor.fetchall()
     conn.close()
     return {r["chave"]: r["valor"] for r in rows}
 
 @app.post("/api/config")
-async def salvar_configuracoes(dados: Dict[str, str]):
+async def salvar_configuracoes(dados: Dict[str, str], request: Request, condominio_id: Optional[int] = None):
+    tenant_id, role = validar_acesso_tenant(
+        request, 
+        recurso_condominio_id=condominio_id, 
+        roles_permitidos=["sindico", "administrador", "admin", "admin_plataforma"]
+    )
     conn = get_db()
     cursor = conn.cursor()
     for k, v in dados.items():
-        cursor.execute("INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES (?, ?)", (k, v))
+        cursor.execute("""
+        INSERT OR REPLACE INTO configuracoes (condominio_id, chave, valor)
+        VALUES (?, ?, ?)
+        """, (tenant_id, k, v))
     conn.commit()
     conn.close()
     return {"status": "success", "mensagem": "Configurações salvas!"}
