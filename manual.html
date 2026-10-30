@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Prático Operacional - ConciliaZap</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+        
+        :root {
+            --primary: #0284c7;
+            --primary-dark: #0369a1;
+            --emerald: #059669;
+            --emerald-light: #ecfdf5;
+            --amber: #d97706;
+            --amber-light: #fffbeb;
+            --red: #dc2626;
+            --red-light: #fef2f2;
+            --slate-900: #0f172a;
+            --slate-800: #1e293b;
+            --slate-600: #475569;
+            --slate-100: #f1f5f9;
+            --slate-50: #f8fafc;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #334155;
+            background: #f8fafc;
+            line-height: 1.5;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .no-print {
+            background: #0f172a;
+            color: #fff;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-print {
+            background: #059669;
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .btn-print:hover { background: #047857; }
+
+        .btn-back {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-back:hover { background: rgba(255,255,255,0.25); }
+
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 25px;
+            margin-bottom: 30px;
+        }
+
+        .badge-header {
+            background: #e0f2fe;
+            color: #0369a1;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        h1 {
+            color: #0f172a;
+            font-size: 26px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .summary-box {
+            background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%);
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 30px;
+            font-size: 12px;
+            color: #166534;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .summary-box i { font-size: 24px; color: #059669; }
+
+        .step-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 25px;
+            background: white;
+            page-break-inside: avoid;
+        }
+
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .step-num {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: #0284c7;
+            color: white;
+            font-weight: 800;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .step-tag {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            border-radius: 6px;
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        .step-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .step-desc {
+            font-size: 13px;
+            color: #475569;
+            margin-bottom: 16px;
+        }
+
+        /* Mockups Visuais */
+        .mockup-chat {
+            background: #efeae2;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #d1d5db;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .bubble-morador {
+            background: white;
+            align-self: flex-start;
+            padding: 10px 14px;
+            border-radius: 10px 10px 10px 2px;
+            max-width: 80%;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .bubble-bot {
+            background: #d9fdd3;
+            align-self: flex-end;
+            padding: 10px 14px;
+            border-radius: 10px 10px 2px 10px;
+            max-width: 85%;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            color: #111b21;
+        }
+
+        .bubble-time {
+            font-size: 9px;
+            color: #667781;
+            text-align: right;
+            margin-top: 4px;
+        }
+
+        .mockup-moderacao {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .mod-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+            font-size: 12px;
+        }
+
+        .btn-mod-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .btn-mod {
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            text-align: center;
+            color: white;
+            border: none;
+        }
+        .btn-mod-amigavel { background: #059669; }
+        .btn-mod-advertencia { background: #d97706; }
+        .btn-mod-multa { background: #dc2626; }
+
+        .mockup-doc {
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-left: 5px solid #dc2626;
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 11px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        }
+
+        .mockup-achado {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            border-radius: 10px;
+        }
+
+        .mockup-achado-img {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            background: #fef3c7;
+            color: #b45309;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+            border: 1px solid #fde68a;
+        }
+
+        .footer-manual {
+            text-align: center;
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 30px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 15px;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; }
+            .container {
+                max-width: 100%;
+                margin: 0;
+                padding: 10px;
+                border: none;
+                box-shadow: none;
+            }
+            .step-card {
+                break-inside: avoid;
+                margin-bottom: 18px;
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fa-solid fa-scale-balanced" style="font-size: 20px; color: #38bdf8;"></i>
+            <span style="font-weight: 800; font-size: 14px;">ConciliaZap • Guia Prático 24/7</span>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <a href="/" class="btn-back">
+                <i class="fa-solid fa-arrow-left"></i> Voltar ao Painel
+            </a>
+            <button onclick="window.print()" class="btn-print">
+                <i class="fa-solid fa-file-pdf"></i> Salvar em PDF / Imprimir
+            </button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <span class="badge-header">Manual Operacional Rápido</span>
+            <h1>Como Usar o ConciliaZap no Dia a Dia</h1>
+            <p class="subtitle">Guia sucinto e ilustrado para o Morador, o Síndico e a Portaria</p>
+        </div>
+
+        <div class="summary-box">
+            <i class="fa-solid fa-shield-halved"></i>
+            <div>
+                <strong>A Regra de Ouro do ConciliaZap:</strong><br>
+                O morador reclamante <strong>nunca é identificado</strong>. A notificação chega para o infrator sempre em nome da <strong>Administração do Condomínio</strong>, eliminando 100% dos conflitos presenciais e discussões de corredor.
+            </div>
+        </div>
+
+        <!-- PASSO 1 -->
+        <div class="step-card">
+            <div class="step-header">
+                <div class="step-num">1</div>
+                <span class="step-tag" style="background: #ecfdf5; color: #047857;">Morador no WhatsApp</span>
+            </div>
+            <div class="step-title">
+                <i class="fa-brands fa-whatsapp" style="color: #059669;"></i>
+                Registro Anônimo de Ocorrência
+            </div>
+            <p class="step-desc">
+                O morador manda uma mensagem simples para o número do WhatsApp da <strong>Portaria Digital</strong> relatando o barulho ou problema:
+            </p>
+
+            <div class="mockup-chat">
+                <div class="bubble-morador">
+                    <strong>Morador:</strong><br>
+                    "Boa noite! O 402 do bloco A está com som alto e gritaria agora."
+                    <div class="bubble-time">22:45</div>
+                </div>
+                <div class="bubble-bot">
+                    <strong>⚖️ ConciliaZap Portaria Digital:</strong><br>
+                    "Olá! Registramos a <strong>Ocorrência #0042</strong> referente ao apto 402 (Bloco A).<br><br>
+                    🛡️ <strong>Garantia de Sigilo:</strong> Seu nome e unidade permanecem 100% confidenciais. O caso foi enviado à moderação do síndico."
+                    <div class="bubble-time">22:45 ✓✓</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PASSO 2 -->
+        <div class="step-card">
+            <div class="step-header">
+                <div class="step-num">2</div>
+                <span class="step-tag" style="background: #eff6ff; color: #1d4ed8;">Síndico no Painel</span>
+            </div>
+            <div class="step-title">
+                <i class="fa-solid fa-gavel" style="color: #0284c7;"></i>
+                Moderação com 1 Clique (Fila de Decisão)
+            </div>
+            <p class="step-desc">
+                O síndico não precisa bater na porta de ninguém. Ele abre a aba <strong>Moderação</strong>, vê a queixa e clica na sanção adequada com 1 toque:
+            </p>
+
+            <div class="mockup-moderacao">
+                <div class="mod-header">
+                    <div>
+                        <strong style="color: #0f172a;">Ocorrência #0042</strong> • <span>Apto 402 - Bloco A</span>
+                    </div>
+                    <span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 10px;">
+                        Pendente (1ª Reincidência)
+                    </span>
+                </div>
+                <div style="font-size: 12px; color: #334155; margin-bottom: 8px;">
+                    <em>"Som alto e gritaria após as 22h no 402."</em>
+                </div>
+
+                <div class="btn-mod-group">
+                    <div class="btn-mod btn-mod-amigavel">
+                        🟢 1. Aviso Amigável<br><small style="font-size: 9px; opacity: 0.9;">1ª Vez / Conscientização</small>
+                    </div>
+                    <div class="btn-mod btn-mod-advertencia">
+                        🟡 2. Advertência Formal<br><small style="font-size: 9px; opacity: 0.9;">1ª Reincidência Oficial</small>
+                    </div>
+                    <div class="btn-mod btn-mod-multa">
+                        🔴 3. Multa em Cota<br><small style="font-size: 9px; opacity: 0.9;">Valor R$ na Taxa</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PASSO 3 -->
+        <div class="step-card">
+            <div class="step-header">
+                <div class="step-num">3</div>
+                <span class="step-tag" style="background: #fef2f2; color: #b91c1c;">Segurança Jurídica</span>
+            </div>
+            <div class="step-title">
+                <i class="fa-solid fa-file-pdf" style="color: #dc2626;"></i>
+                Auto de Infração e Laudo Oficial em PDF
+            </div>
+            <p class="step-desc">
+                O sistema gera na hora o documento formal para ser impresso, enviado por WhatsApp ou anexado ao boleto da cota condominial:
+            </p>
+
+            <div class="mockup-doc">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 6px; margin-bottom: 6px;">
+                    <strong>📄 AUTO DE INFRAÇÃO E NOTIFICAÇÃO ADMINISTRATIVA</strong>
+                    <span style="font-size: 10px; color: #64748b;">Código: CCZ-2026-9481</span>
+                </div>
+                <p>• <strong>Unidade Notificada:</strong> Apartamento 402 - Bloco A</p>
+                <p>• <strong>Enquadramento:</strong> Art. 42 da Lei de Contravenções Penais e Art. 1.336 do Código Civil</p>
+                <p>• <strong>Parecer:</strong> Reincidência de ruído excessivo constatada fora do horário de silêncio.</p>
+                <div style="margin-top: 8px; text-align: right;">
+                    <span style="background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px;">Com QR Code de Validação</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PASSO 4 -->
+        <div class="step-card">
+            <div class="step-header">
+                <div class="step-num">4</div>
+                <span class="step-tag" style="background: #faf5ff; color: #7e22ce;">Portaria & Gestão</span>
+            </div>
+            <div class="step-title">
+                <i class="fa-solid fa-calendar-check" style="color: #9333ea;"></i>
+                Reservas de Churrasqueira e Salão sem Conflito
+            </div>
+            <p class="step-desc">
+                Moradores solicitam reservas no WhatsApp ou no painel. O sistema bloqueia na hora qualquer tentativa de reserva simultânea no mesmo horário:
+            </p>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>🥩 Churrasqueira Gourmet</strong><br>
+                    <span style="color: #64748b; font-size: 11px;">15/11/2026 • Período da Tarde</span>
+                </div>
+                <span style="background: #dcfce7; color: #15803d; font-weight: 700; font-size: 11px; padding: 3px 8px; border-radius: 6px;">
+                    ✓ Confirmada
+                </span>
+            </div>
+        </div>
+
+        <!-- PASSO 5 -->
+        <div class="step-card">
+            <div class="step-header">
+                <div class="step-num">5</div>
+                <span class="step-tag" style="background: #fffbeb; color: #b45309;">Portaria Digital</span>
+            </div>
+            <div class="step-title">
+                <i class="fa-solid fa-camera" style="color: #d97706;"></i>
+                Achados & Perdidos com Foto do Celular
+            </div>
+            <p class="step-desc">
+                Ao encontrar chaves, óculos ou encomendas soltas, a portaria tira uma foto na hora pelo celular e o item fica visível com foto para todos os moradores:
+            </p>
+
+            <div class="mockup-achado">
+                <div class="mockup-achado-img">
+                    <i class="fa-solid fa-key"></i>
+                </div>
+                <div style="flex: 1; font-size: 12px;">
+                    <strong>Chaveiro com controle de garagem e fita azul</strong><br>
+                    <span style="color: #64748b; font-size: 11px;">Local: Subsolo 1 (próximo à vaga 22)</span><br>
+                    <span style="color: #059669; font-weight: bold; font-size: 10px;">📸 Foto disponível para consulta</span>
+                </div>
+                <span style="background: #e2e8f0; color: #334155; font-size: 10px; font-weight: bold; padding: 4px 8px; border-radius: 6px;">Disponível</span>
+            </div>
+        </div>
+
+        <!-- PASSO 6 -->
+        <div class="step-card">
+            <div class="step-header">
+                <div class="step-num">6</div>
+                <span class="step-tag" style="background: #ecfdf5; color: #047857;">Monetização & SaaS</span>
+            </div>
+            <div class="step-title">
+                <i class="fa-solid fa-credit-card" style="color: #059669;"></i>
+                Assinatura Exclusiva por Condomínio (Kiwify & PIX)
+            </div>
+            <p class="step-desc">
+                O morador <strong>não paga nada</strong>. O condomínio paga a assinatura mensal através da Kiwify ou PIX oficial, com liberação automática 24/7:
+            </p>
+
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px; font-size: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-weight: 800; color: #166534;">🥝 Checkout Seguro Oficial Kiwify (R$ 199/mês)</span>
+                    <span style="background: #dcfce7; color: #166534; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px;">Liberação Instantânea</span>
+                </div>
+                <p style="color: #15803d; font-size: 11px; margin-bottom: 8px;">O síndico pode pagar em até 12x no cartão, PIX ou boleto bancário.</p>
+                <p style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #166534;">Chave PIX Oficial: <strong>luklen2@gmail.com</strong> (Luciano da Silva Sant Anna)</p>
+            </div>
+        </div>
+
+        <div class="footer-manual">
+            <p><strong>ConciliaZap © 2026</strong> • Plataforma Autônoma de Gestão e Mediação Condominial 24/7</p>
+            <p>Documento gerado para orientação operacional de síndicos, administradoras e portarias.</p>
+        </div>
+    </div>
+
+</body>
+</html>

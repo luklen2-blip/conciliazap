@@ -673,15 +673,42 @@
 
         <!-- =================== ABA 7: GUIA PASSO A PASSO (COMO USAR) =================== -->
         <section id="aba-guia" class="hidden space-y-6">
-            <div class="text-center max-w-2xl mx-auto space-y-2 mb-6">
-                <span class="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">Manual Operacional 24/7</span>
-                <h2 class="text-2xl font-black text-slate-900">Como Usar o ConciliaZap no Dia a Dia</h2>
+            <!-- Banner de Download e Impressão do Manual Oficial -->
+            <div class="flex flex-col sm:flex-row items-center justify-between p-5 bg-gradient-to-r from-slate-900 via-brand-900 to-slate-900 text-white rounded-2xl shadow-xl border border-brand-800/50 gap-4">
+                <div class="space-y-1 text-center sm:text-left">
+                    <div class="flex items-center justify-center sm:justify-start space-x-2">
+                        <span class="text-[10px] font-black uppercase tracking-wider bg-brand-500/30 text-brand-300 px-2.5 py-0.5 rounded-full border border-brand-400/30">Download Oficial Disponível</span>
+                        <span class="text-[10px] font-bold text-emerald-400 flex items-center space-x-1">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span>PDF Ilustrado</span>
+                        </span>
+                    </div>
+                    <h3 class="text-base sm:text-lg font-black text-white">Manual Prático Operacional Completo com Imagens</h3>
+                    <p class="text-xs text-slate-300 max-w-xl">
+                        Guia sucinto e ilustrado pronto para baixar no seu computador, celular ou imprimir para orientar síndicos, moradores e portaria.
+                    </p>
+                </div>
+                <div class="flex items-center space-x-2.5 flex-shrink-0">
+                    <a href="/manual" target="_blank" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs shadow transition flex items-center space-x-2">
+                        <i class="fa-solid fa-eye text-sky-400"></i>
+                        <span>Visualizar Online</span>
+                    </a>
+                    <a href="/manual/download" download="Manual_Pratico_ConciliaZap.pdf" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs shadow-lg hover:shadow-emerald-500/25 transition flex items-center space-x-2">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Baixar em PDF</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="text-center max-w-2xl mx-auto space-y-2 pt-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">Passo a Passo Rápido</span>
+                <h2 class="text-2xl font-black text-slate-900">Como Usar a Ferramenta no Dia a Dia</h2>
                 <p class="text-xs text-slate-500">
-                    Guia simples e prático para o morador, para o síndico e para você monetizar o condomínio com paz social e impessoalidade.
+                    Fluxo ágil e descomplicado para o morador, para a moderação do síndico e para a portaria.
                 </p>
             </div>
 
-            <!-- Grid de Passos -->
+            <!-- Grid de Passos com Ilustrações Práticas -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
                 <!-- Passo 1 -->
@@ -698,9 +725,18 @@
                         <p class="text-xs text-slate-600 leading-relaxed">
                             O condômino envia uma mensagem de texto simples no WhatsApp (ex: <em>"Tem muito barulho de som alto no 402 bloco A"</em>).
                         </p>
-                        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-600 space-y-1">
-                            <p class="font-bold text-slate-700">🔒 Sigilo e Impessoalidade Garantidos:</p>
-                            <p>O robô responde acolhendo a queixa, <strong>mantendo a identidade do denunciante em sigilo absoluto</strong> e solicitando áudio ou vídeo como evidência.</p>
+                        <!-- Ilustração Visual do Chat -->
+                        <div class="p-2.5 bg-slate-100/80 rounded-xl border border-slate-200/80 space-y-1.5 text-[11px] font-sans">
+                            <div class="bg-white p-2 rounded-lg shadow-xs text-slate-800 border-l-2 border-emerald-500">
+                                💬 <em>"Boa noite, som alto no 402 bloco A..."</em>
+                            </div>
+                            <div class="bg-emerald-100/90 p-2 rounded-lg text-emerald-950 font-medium">
+                                🤖 <strong>Robô:</strong> Ocorrência registrada! Seu nome e ap estão em <strong>sigilo absoluto</strong>.
+                            </div>
+                        </div>
+                        <div class="p-2 bg-emerald-50/60 rounded-lg text-[10px] text-emerald-800 font-medium flex items-center space-x-1.5">
+                            <i class="fa-solid fa-user-shield text-emerald-600"></i>
+                            <span>Denunciante 100% blindado e protegido pela plataforma.</span>
                         </div>
                     </div>
                     <button onclick="trocarAba('simulador')" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs shadow transition flex items-center justify-center space-x-1.5">
@@ -723,20 +759,24 @@
                         <p class="text-xs text-slate-600 leading-relaxed">
                             O síndico acessa a aba <strong>Moderação</strong>, vê a fila de queixas pendentes e o histórico automático de reincidências do infrator.
                         </p>
-                        <ul class="text-[11px] text-slate-600 space-y-1.5 pt-1">
-                            <li class="flex items-center space-x-1.5">
-                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                <span><strong>Aviso Amigável:</strong> Conscientização inicial.</span>
-                            </li>
-                            <li class="flex items-center space-x-1.5">
-                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-                                <span><strong>Advertência Formal:</strong> 1ª reincidência oficial.</span>
-                            </li>
-                            <li class="flex items-center space-x-1.5">
-                                <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                                <span><strong>Multa Pecuniária:</strong> Valor em R$ lançado em cota.</span>
-                            </li>
-                        </ul>
+                        <!-- Ilustração Visual dos Botões de Moderação -->
+                        <div class="grid grid-cols-3 gap-1.5 pt-1 text-[10px] font-bold text-center">
+                            <span class="p-2 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200 shadow-xs flex flex-col items-center">
+                                <span class="text-xs">🟢</span>
+                                <span>Amigável</span>
+                                <small class="text-[8px] font-normal opacity-75">1ª Queixa</small>
+                            </span>
+                            <span class="p-2 bg-amber-50 text-amber-800 rounded-lg border border-amber-200 shadow-xs flex flex-col items-center">
+                                <span class="text-xs">🟡</span>
+                                <span>Advertência</span>
+                                <small class="text-[8px] font-normal opacity-75">1ª Reincidência</small>
+                            </span>
+                            <span class="p-2 bg-red-50 text-red-800 rounded-lg border border-red-200 shadow-xs flex flex-col items-center">
+                                <span class="text-xs">🔴</span>
+                                <span>Multa R$</span>
+                                <small class="text-[8px] font-normal opacity-75">Auto Formal</small>
+                            </span>
+                        </div>
                     </div>
                     <button onclick="trocarAba('painel')" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs shadow transition flex items-center justify-center space-x-1.5">
                         <i class="fa-solid fa-list-check"></i>
@@ -758,9 +798,13 @@
                         <p class="text-xs text-slate-600 leading-relaxed">
                             Para cada queixa homologada, o síndico clica em <strong>"Laudo Oficial PDF"</strong> para abrir o auto de infração timbrado.
                         </p>
-                        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-[11px] text-slate-600 space-y-1">
-                            <p class="font-bold text-slate-700">⚖️ Conformidade Legal Brasileira:</p>
-                            <p>Documento estruturado com base nos Arts. 1.336 e 1.337 do Código Civil, pronto para impressão ou envio com o boleto da taxa de condomínio.</p>
+                        <!-- Ilustração Visual do Laudo PDF -->
+                        <div class="p-2.5 bg-slate-50 border-l-4 border-red-500 rounded-xl text-[11px] text-slate-700 space-y-1 shadow-xs">
+                            <div class="flex justify-between items-center">
+                                <strong class="text-red-700 font-bold">📄 Auto de Infração Timbrado</strong>
+                                <span class="text-[9px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-mono font-bold">QR Code Bacen</span>
+                            </div>
+                            <p class="text-[10px] text-slate-500">Fundamentado no Art. 1.336 do Código Civil e Regimento Interno do condomínio.</p>
                         </div>
                     </div>
                     <div class="p-2 bg-slate-100 rounded-xl text-center text-[11px] text-slate-600 font-medium">
@@ -782,9 +826,16 @@
                         <p class="text-xs text-slate-600 leading-relaxed">
                             Moradores podem agendar o Salão de Festas ou Churrasqueira pelo WhatsApp ou painel.
                         </p>
-                        <div class="p-2.5 bg-purple-50 rounded-xl border border-purple-100 text-[11px] text-purple-900 space-y-1">
-                            <p class="font-bold">🛡️ Prevenção Automática de Conflitos:</p>
-                            <p>O sistema rejeita instantaneamente qualquer tentativa de reserva sobreposta no mesmo espaço, data e período.</p>
+                        <!-- Ilustração Visual da Reserva -->
+                        <div class="p-2 bg-purple-50/70 border border-purple-200/80 rounded-xl space-y-1 text-[11px] text-purple-950">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold">🥩 Churrasqueira Gourmet</span>
+                                <span class="bg-purple-200 text-purple-900 px-2 py-0.5 rounded text-[9px] font-extrabold uppercase">Confirmada</span>
+                            </div>
+                            <span class="text-[10px] text-purple-700 flex items-center space-x-1">
+                                <i class="fa-solid fa-lock text-[9px]"></i>
+                                <span>Bloqueio automático contra conflito de data/horário</span>
+                            </span>
                         </div>
                     </div>
                     <button onclick="trocarAba('reservas')" class="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-xs shadow transition flex items-center justify-center space-x-1.5">

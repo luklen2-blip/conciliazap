@@ -1894,6 +1894,31 @@ async def salvar_configuracoes(dados: Dict[str, Any], request: Request, condomin
     conn.close()
     return {"status": "success", "mensagem": "Configurações salvas com sucesso!"}
 
+# --- 10.5. MANUAL PRÁTICO OPERACIONAL E DOWNLOAD (PDF / HTML) ---
+@app.get("/manual", response_class=HTMLResponse)
+async def pagina_manual():
+    caminho_html = os.path.join(os.path.dirname(__file__), "manual.html")
+    if os.path.exists(caminho_html):
+        with open(caminho_html, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse(content="<h1>Manual Operacional ConciliaZap</h1><p>Arquivo manual.html não encontrado.</p>")
+
+@app.get("/manual/download")
+async def baixar_manual_pdf():
+    caminho_pdf = os.path.join(os.path.dirname(__file__), "manual_pratico.pdf")
+    if os.path.exists(caminho_pdf):
+        return FileResponse(
+            path=caminho_pdf,
+            filename="Manual_Pratico_ConciliaZap.pdf",
+            media_type="application/pdf"
+        )
+    # Se não houver PDF pré-gerado, retorna o manual HTML otimizado para impressão / salvar em PDF
+    caminho_html = os.path.join(os.path.dirname(__file__), "manual.html")
+    if os.path.exists(caminho_html):
+        with open(caminho_html, "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse(content="<h1>Manual Operacional ConciliaZap</h1>")
+
 # --- 11. PÁGINAS LEGAIS E CONFORMIDADE (LGPD E TERMOS) ---
 @app.get("/termos", response_class=HTMLResponse)
 async def pagina_termos():
