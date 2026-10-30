@@ -644,19 +644,42 @@ async function carregarAchados() {
         }
 
         container.innerHTML = achados.map(a => `
-            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
-                <div>
-                    <span class="font-bold text-slate-900 block">${escapeHtml(a.item)}</span>
-                    <span class="text-slate-500">Local: ${escapeHtml(a.local_encontrado)}</span>
-                    <span class="block text-[10px] ${a.status === 'Disponível' ? 'text-amber-600 font-bold' : 'text-emerald-600'}">
-                        Status: ${escapeHtml(a.status)} ${a.devolvido_para ? `(Devolvido para ${escapeHtml(a.devolvido_para)})` : ''}
-                    </span>
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:border-slate-300 transition">
+                <div class="flex items-center space-x-3 min-w-0">
+                    ${a.foto_url ? `
+                        <div class="relative cursor-pointer group flex-shrink-0" onclick="abrirModalFoto('${encodeURI(a.foto_url)}', '${escapeHtml(a.item)}')">
+                            <img src="${a.foto_url}" alt="${escapeHtml(a.item)}" class="w-14 h-14 object-cover rounded-xl border border-slate-200 group-hover:opacity-90 shadow-sm transition">
+                            <span class="absolute inset-0 bg-slate-900/30 rounded-xl opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[10px] transition">
+                                <i class="fa-solid fa-magnifying-glass-plus"></i>
+                            </span>
+                        </div>
+                    ` : `
+                        <div class="w-14 h-14 rounded-xl bg-amber-100/70 border border-amber-200 flex flex-col items-center justify-center text-amber-600 flex-shrink-0">
+                            <i class="fa-solid fa-box-open text-base"></i>
+                            <span class="text-[8px] uppercase font-bold text-amber-700/80 mt-0.5">Sem foto</span>
+                        </div>
+                    `}
+                    <div class="min-w-0">
+                        <span class="font-bold text-slate-900 block truncate text-xs sm:text-sm">${escapeHtml(a.item)}</span>
+                        <span class="text-slate-500 text-[11px] block truncate"><i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>Local: ${escapeHtml(a.local_encontrado)}</span>
+                        <span class="block text-[10px] mt-0.5 ${a.status === 'Disponível' ? 'text-amber-600 font-bold' : 'text-emerald-600'}">
+                            Status: ${escapeHtml(a.status)} ${a.devolvido_para ? `(Devolvido para ${escapeHtml(a.devolvido_para)})` : ''}
+                        </span>
+                    </div>
                 </div>
-                ${a.status === 'Disponível' ? `
-                    <button onclick="marcarDevolvido(${a.id})" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold">
-                        Devolver
-                    </button>
-                ` : ''}
+                <div class="flex items-center space-x-2 flex-shrink-0 ml-2">
+                    ${a.foto_url ? `
+                        <button onclick="abrirModalFoto('${encodeURI(a.foto_url)}', '${escapeHtml(a.item)}')" class="p-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-[11px] transition" title="Ver Foto Ampliada">
+                            <i class="fa-solid fa-image"></i>
+                        </button>
+                    ` : ''}
+                    ${a.status === 'Disponível' ? `
+                        <button onclick="marcarDevolvido(${a.id})" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold shadow-sm transition flex items-center space-x-1">
+                            <i class="fa-solid fa-check"></i>
+                            <span>Devolver</span>
+                        </button>
+                    ` : ''}
+                </div>
             </div>
         `).join("");
     } catch (e) {
@@ -778,7 +801,81 @@ async function salvarNovaReserva() {
     }
 }
 
-// --- MODAL DE NOVO ACHADO ---
+// --- MODAL DE NOVO ACHADO E CONTROLE DE FOTOS ---
+let fotoAchadoAtualBase64 = null;
+
+function tratarFotoAchado(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+        alert("Por favor, selecione um arquivo de imagem válido (JPG, PNG ou WEBP).");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            // Redimensionamento proporcional em canvas para otimização (máx 800px)
+            const canvas = document.createElement("canvas");
+            let width = img.width;
+            let height = img.height;
+            const maxDim = 800;
+
+            if (width > height && width > maxDim) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+            } else if (height > maxDim) {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Compressão JPEG otimizada (qualidade 0.75) gerando dados leves (~50KB)
+            fotoAchadoAtualBase64 = canvas.toDataURL("image/jpeg", 0.75);
+
+            // Exibe o preview no modal
+            const previewContainer = document.getElementById("novoAchadoPreviewContainer");
+            const previewImg = document.getElementById("novoAchadoPreviewImg");
+            if (previewContainer && previewImg) {
+                previewImg.src = fotoAchadoAtualBase64;
+                previewContainer.classList.remove("hidden");
+            }
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function removerFotoAchado() {
+    fotoAchadoAtualBase64 = null;
+    const input = document.getElementById("novoAchadoFotoInput");
+    if (input) input.value = "";
+    const previewContainer = document.getElementById("novoAchadoPreviewContainer");
+    if (previewContainer) previewContainer.classList.add("hidden");
+}
+
+function abrirModalFoto(fotoUrl, itemNome) {
+    const modal = document.getElementById("modalFotoAchado");
+    const img = document.getElementById("modalFotoImg");
+    const titulo = document.getElementById("modalFotoTitulo");
+    if (!modal || !img) return;
+
+    img.src = decodeURI(fotoUrl);
+    if (titulo) titulo.innerText = itemNome ? `Foto: ${itemNome}` : "Foto do Objeto";
+    modal.classList.remove("hidden");
+}
+
+function fecharModalFoto() {
+    const modal = document.getElementById("modalFotoAchado");
+    if (modal) modal.classList.add("hidden");
+}
+
 function abrirModalNovoAchado() {
     const modal = document.getElementById("modalNovoAchado");
     if (modal) {
@@ -786,6 +883,7 @@ function abrirModalNovoAchado() {
         const localInput = document.getElementById("novoAchadoLocal");
         if (itemInput) itemInput.value = "";
         if (localInput) localInput.value = "";
+        removerFotoAchado();
         modal.classList.remove("hidden");
     }
 }
@@ -793,6 +891,7 @@ function abrirModalNovoAchado() {
 function fecharModalNovoAchado() {
     const modal = document.getElementById("modalNovoAchado");
     if (modal) modal.classList.add("hidden");
+    removerFotoAchado();
 }
 
 async function salvarNovoAchado() {
@@ -811,29 +910,34 @@ async function salvarNovoAchado() {
     const btn = document.getElementById("btnSalvarAchado");
     if (btn) {
         btn.disabled = true;
-        btn.innerText = "Salvando...";
+        btn.innerText = "Salvando com foto...";
     }
 
     try {
         const res = await fetch("/api/achados", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "X-User-Role": "portaria"
+            },
             body: JSON.stringify({
                 item: item,
-                local_encontrado: local
+                local_encontrado: local,
+                foto_url: fotoAchadoAtualBase64
             })
         });
 
         if (!res.ok) {
-            const err = await res.json();
+            const err = await res.json().catch(() => ({}));
             alert(`Erro: ${err.detail || "Não foi possível cadastrar o item."}`);
             return;
         }
 
         fecharModalNovoAchado();
-        exibirToast("📦 Item cadastrado em Achados e Perdidos!");
+        exibirToast("📦 Item com foto cadastrado em Achados e Perdidos!");
         carregarAchados();
     } catch (e) {
+        console.error(e);
         alert("Erro ao conectar com o servidor.");
     } finally {
         if (btn) {

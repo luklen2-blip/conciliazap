@@ -118,6 +118,7 @@ class ReservaCreate(BaseModel):
 class AchadoCreate(BaseModel):
     item: str
     local_encontrado: str
+    foto_url: Optional[str] = None
     condominio_id: Optional[int] = 1
 
 class OcorrenciaDecisao(BaseModel):
@@ -225,6 +226,7 @@ def inicializar_banco():
         condominio_id INTEGER DEFAULT 1,
         item TEXT NOT NULL,
         local_encontrado TEXT NOT NULL,
+        foto_url TEXT,
         status TEXT DEFAULT 'Disponível',
         devolvido_para TEXT,
         data_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -268,6 +270,7 @@ def inicializar_banco():
     migrar_coluna("ocorrencias", "condominio_id INTEGER DEFAULT 1")
     migrar_coluna("reservas", "condominio_id INTEGER DEFAULT 1")
     migrar_coluna("achados_perdidos", "condominio_id INTEGER DEFAULT 1")
+    migrar_coluna("achados_perdidos", "foto_url TEXT")
     # Migração estrutural de configuracoes para chave composta (condominio_id, chave)
     try:
         cursor.execute("SELECT sql FROM sqlite_master WHERE name='configuracoes'")
@@ -830,7 +833,7 @@ async def processar_mensagem_whatsapp(request: Request):
     if any(p in texto_lower for p in ["achado", "perdido", "perdi", "encontrei", "chave", "carteira", "objeto"]):
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, item, local_encontrado, data_registro FROM achados_perdidos WHERE condominio_id = ? AND status = 'Disponível' ORDER BY id DESC LIMIT 4", (condo_id,))
+        cursor.execute("SELECT id, item, local_encontrado, foto_url, data_registro FROM achados_perdidos WHERE condominio_id = ? AND status = 'Disponível' ORDER BY id DESC LIMIT 4", (condo_id,))
         itens = cursor.fetchall()
         conn.close()
         
@@ -1510,9 +1513,9 @@ async def registrar_achado(achado: AchadoCreate, request: Request):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-    INSERT INTO achados_perdidos (item, local_encontrado, status, condominio_id)
-    VALUES (?, ?, 'Disponível', ?)
-    """, (achado.item, achado.local_encontrado, condo_id))
+    INSERT INTO achados_perdidos (item, local_encontrado, foto_url, status, condominio_id)
+    VALUES (?, ?, ?, 'Disponível', ?)
+    """, (achado.item.strip(), achado.local_encontrado.strip(), achado.foto_url, condo_id))
     item_id = cursor.lastrowid
     conn.commit()
     conn.close()
