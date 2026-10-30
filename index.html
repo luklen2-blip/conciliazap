@@ -1142,6 +1142,104 @@ Vanessa Prado, 5511977773333, 301, A"></textarea>
         </div>
     </div>
 
+    <!-- Modal Nova Reserva de Área Comum -->
+    <div id="modalNovaReserva" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-100 space-y-4 text-xs">
+            <div class="flex justify-between items-center border-b pb-2">
+                <div class="flex items-center space-x-2">
+                    <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-calendar-plus text-sm"></i>
+                    </span>
+                    <div>
+                        <h3 class="font-bold text-sm text-slate-900">Agendar Nova Reserva</h3>
+                        <p class="text-[11px] text-slate-500">Locação de espaço comum para morador</p>
+                    </div>
+                </div>
+                <button onclick="fecharModalNovaReserva()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">×</button>
+            </div>
+            
+            <div>
+                <label class="block font-bold text-slate-700 uppercase mb-1 text-[11px]">Selecione o Morador / Unidade:</label>
+                <select id="reservaMoradorSelect" class="w-full border border-slate-300 rounded-lg p-2.5 bg-white text-xs">
+                    <option value="">Carregando moradores...</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block font-bold text-slate-700 uppercase mb-1 text-[11px]">Área Comum:</label>
+                <select id="reservaAreaSelect" class="w-full border border-slate-300 rounded-lg p-2.5 bg-white text-xs">
+                    <option value="Salão de Festas Climatizado">Salão de Festas Climatizado</option>
+                    <option value="Espaço Gourmet com Churrasqueira">Espaço Gourmet com Churrasqueira</option>
+                    <option value="Quadra Poliesportiva">Quadra Poliesportiva</option>
+                    <option value="Espaço Kids / Brinquedoteca">Espaço Kids / Brinquedoteca</option>
+                    <option value="Salão de Jogos">Salão de Jogos</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1 text-[11px]">Data da Reserva:</label>
+                    <input type="date" id="reservaDataInput" class="w-full border border-slate-300 rounded-lg p-2 text-xs">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1 text-[11px]">Período:</label>
+                    <select id="reservaPeriodoSelect" class="w-full border border-slate-300 rounded-lg p-2 bg-white text-xs">
+                        <option value="Noite (18h às 23h)">Noite (18h às 23h)</option>
+                        <option value="Tarde (12h às 17h)">Tarde (12h às 17h)</option>
+                        <option value="Manhã (08h às 12h)">Manhã (08h às 12h)</option>
+                        <option value="Dia Todo (09h às 22h)">Dia Todo (09h às 22h)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-[11px] text-indigo-900 space-y-1">
+                <p class="font-bold flex items-center space-x-1">
+                    <i class="fa-solid fa-shield-halved text-indigo-600"></i>
+                    <span>Bloqueio de Conflito Ativo:</span>
+                </p>
+                <p class="text-indigo-700">O sistema impede automaticamente reservas simultâneas na mesma área e data.</p>
+            </div>
+
+            <div class="pt-2 flex justify-end space-x-2">
+                <button onclick="fecharModalNovaReserva()" class="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition">Cancelar</button>
+                <button onclick="salvarNovaReserva()" id="btnSalvarReserva" class="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-500 transition shadow">Confirmar Reserva</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Novo Item em Achados e Perdidos -->
+    <div id="modalNovoAchado" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-100 space-y-4 text-xs">
+            <div class="flex justify-between items-center border-b pb-2">
+                <div class="flex items-center space-x-2">
+                    <span class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-box-open text-sm"></i>
+                    </span>
+                    <div>
+                        <h3 class="font-bold text-sm text-slate-900">Cadastrar Item Perdido</h3>
+                        <p class="text-[11px] text-slate-500">Resguardado na portaria</p>
+                    </div>
+                </div>
+                <button onclick="fecharModalNovoAchado()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">×</button>
+            </div>
+            
+            <div>
+                <label class="block font-bold text-slate-700 uppercase mb-1 text-[11px]">Descrição do Item:</label>
+                <input type="text" id="novoAchadoItem" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs" placeholder="Ex: Chaveiro com controle de portão e fita azul">
+            </div>
+
+            <div>
+                <label class="block font-bold text-slate-700 uppercase mb-1 text-[11px]">Local Onde Foi Encontrado:</label>
+                <input type="text" id="novoAchadoLocal" class="w-full border border-slate-300 rounded-lg p-2.5 text-xs" placeholder="Ex: Hall do Bloco B / Garagem subsolo 1">
+            </div>
+
+            <div class="pt-2 flex justify-end space-x-2">
+                <button onclick="fecharModalNovoAchado()" class="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition">Cancelar</button>
+                <button onclick="salvarNovoAchado()" id="btnSalvarAchado" class="px-4 py-2 bg-amber-600 text-white font-bold rounded-lg hover:bg-amber-500 transition shadow">Cadastrar Item</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Como Divulgar aos Moradores -->
     <div id="modalDivulgacao" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 space-y-4 text-xs">

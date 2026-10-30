@@ -676,6 +676,174 @@ async function marcarDevolvido(id) {
     carregarAchados();
 }
 
+// --- MODAL DE NOVA RESERVA ---
+async function abrirModalNovaReserva() {
+    const modal = document.getElementById("modalNovaReserva");
+    if (!modal) return;
+
+    // Preenche a data padrão como a data de amanhã
+    const dataInput = document.getElementById("reservaDataInput");
+    if (dataInput && !dataInput.value) {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        dataInput.value = d.toISOString().split("T")[0];
+    }
+
+    // Carrega a lista de moradores no select
+    const select = document.getElementById("reservaMoradorSelect");
+    if (select) {
+        select.innerHTML = `<option value="">Carregando moradores...</option>`;
+        try {
+            const res = await fetch("/api/moradores");
+            const moradores = await res.json();
+            if (moradores && moradores.length > 0) {
+                select.innerHTML = moradores.map(m => `
+                    <option value="${m.id}">${escapeHtml(m.nome)} — Ap ${escapeHtml(m.apartamento)} (Bloco ${escapeHtml(m.bloco)})</option>
+                `).join("");
+            } else {
+                select.innerHTML = `<option value="">Nenhum morador cadastrado</option>`;
+            }
+        } catch (e) {
+            select.innerHTML = `<option value="">Erro ao carregar moradores</option>`;
+        }
+    }
+
+    modal.classList.remove("hidden");
+}
+
+function fecharModalNovaReserva() {
+    const modal = document.getElementById("modalNovaReserva");
+    if (modal) modal.classList.add("hidden");
+}
+
+async function salvarNovaReserva() {
+    const moradorId = document.getElementById("reservaMoradorSelect")?.value;
+    const area = document.getElementById("reservaAreaSelect")?.value;
+    const dataReserva = document.getElementById("reservaDataInput")?.value;
+    const periodo = document.getElementById("reservaPeriodoSelect")?.value;
+
+    if (!moradorId) {
+        alert("Por favor, selecione um morador.");
+        return;
+    }
+    if (!area) {
+        alert("Por favor, selecione a área comum.");
+        return;
+    }
+    if (!dataReserva) {
+        alert("Por favor, selecione a data da reserva.");
+        return;
+    }
+
+    const btn = document.getElementById("btnSalvarReserva");
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = "Salvando...";
+    }
+
+    try {
+        const res = await fetch("/api/reservas", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                morador_id: parseInt(moradorId),
+                area: area,
+                data_reserva: dataReserva,
+                periodo: periodo
+            })
+        });
+
+        if (res.status === 409) {
+            const err = await res.json();
+            alert(`⚠️ Conflito de Agenda!\n\n${err.detail || "Esta área já está reservada para esta data e período."}`);
+            return;
+        }
+
+        if (!res.ok) {
+            const err = await res.json();
+            alert(`Erro: ${err.detail || "Não foi possível confirmar a reserva."}`);
+            return;
+        }
+
+        fecharModalNovaReserva();
+        exibirToast("🎉 Reserva confirmada com sucesso!");
+        carregarReservas();
+    } catch (e) {
+        alert("Erro ao conectar com o servidor.");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = "Confirmar Reserva";
+        }
+    }
+}
+
+// --- MODAL DE NOVO ACHADO ---
+function abrirModalNovoAchado() {
+    const modal = document.getElementById("modalNovoAchado");
+    if (modal) {
+        const itemInput = document.getElementById("novoAchadoItem");
+        const localInput = document.getElementById("novoAchadoLocal");
+        if (itemInput) itemInput.value = "";
+        if (localInput) localInput.value = "";
+        modal.classList.remove("hidden");
+    }
+}
+
+function fecharModalNovoAchado() {
+    const modal = document.getElementById("modalNovoAchado");
+    if (modal) modal.classList.add("hidden");
+}
+
+async function salvarNovoAchado() {
+    const item = document.getElementById("novoAchadoItem")?.value.trim();
+    const local = document.getElementById("novoAchadoLocal")?.value.trim();
+
+    if (!item || item.length < 2) {
+        alert("Por favor, digite a descrição do item encontrado.");
+        return;
+    }
+    if (!local || local.length < 2) {
+        alert("Por favor, informe onde o item foi encontrado.");
+        return;
+    }
+
+    const btn = document.getElementById("btnSalvarAchado");
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = "Salvando...";
+    }
+
+    try {
+        const res = await fetch("/api/achados", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                item: item,
+                local_encontrado: local
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            alert(`Erro: ${err.detail || "Não foi possível cadastrar o item."}`);
+            return;
+        }
+
+        fecharModalNovoAchado();
+        exibirToast("📦 Item cadastrado em Achados e Perdidos!");
+        carregarAchados();
+    } catch (e) {
+        alert("Erro ao conectar com o servidor.");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = "Cadastrar Item";
+        }
+    }
+}
+
+
 // --- MONETIZAÇÃO SAAS E PIX OFICIAL BACEN ---
 async function carregarPlanos() {
     try {
