@@ -65,21 +65,21 @@
 <body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-brand-500 selection:text-white">
 
     <!-- ==================== TOP BAR INFORMATIVA ==================== -->
-    <div class="bg-navy-950 text-slate-300 text-xs py-2 px-4 border-b border-slate-800">
+    <div class="bg-navy-950 text-slate-300 text-xs py-2.5 px-4 border-b border-slate-800 shadow-md">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
             <div class="flex items-center space-x-2 text-center sm:text-left">
-                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">NOVIDADE 2.0</span>
-                <span>Portaria Digital e Mediação Autônoma 24 Horas no WhatsApp</span>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-400 text-navy-950 animate-pulse tracking-wide uppercase">🎁 Degustação Oficial</span>
+                <span class="font-extrabold text-white text-xs sm:text-sm">30 DIAS SEM PAGAR: Conheça e teste a ferramenta no seu condomínio sem cartão de crédito!</span>
             </div>
             <div class="flex items-center space-x-4 text-[11px]">
-                <a href="https://wa.me/5521992113903?text=Ol%C3%A1%20Luciano,%20gostaria%20de%20tirar%20d%C3%BAvidas%20sobre%20o%20ConciliaZap" target="_blank" class="hover:text-emerald-400 transition flex items-center space-x-1">
-                    <i class="fa-brands fa-whatsapp text-emerald-400"></i>
-                    <span>Atendimento Comercial: (21) 99211-3903</span>
+                <a href="https://wa.me/5521992113903?text=Ol%C3%A1%20Luciano,%20quero%20conhecer%20os%2030%20dias%20sem%20pagar%20do%20ConciliaZap" target="_blank" class="text-emerald-400 hover:text-emerald-300 font-bold transition flex items-center space-x-1">
+                    <i class="fa-brands fa-whatsapp text-emerald-400 text-sm"></i>
+                    <span>Ativar 30 Dias no WhatsApp: (21) 99211-3903</span>
                 </a>
                 <span class="text-slate-600 hidden sm:inline">•</span>
-                <a href="/painel" class="text-emerald-400 hover:text-emerald-300 font-bold transition flex items-center space-x-1">
-                    <i class="fa-solid fa-lock text-[10px]"></i>
-                    <span>Área do Síndico / Painel</span>
+                <a href="/painel" class="text-slate-300 hover:text-white transition flex items-center space-x-1">
+                    <i class="fa-solid fa-lock text-[10px] text-emerald-400"></i>
+                    <span>Área do Síndico</span>
                 </a>
             </div>
         </div>
@@ -115,10 +115,10 @@
                     <i class="fa-solid fa-gauge-high text-slate-500"></i>
                     <span>Entrar no Painel</span>
                 </a>
-                <a href="#precos" class="px-5 py-2.5 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md hover:shadow-lg transition flex items-center space-x-2">
-                    <i class="fa-solid fa-credit-card"></i>
-                    <span>Contratar (R$ 199)</span>
-                </a>
+                <button onclick="abrirModalDegustacao()" class="px-5 py-2.5 rounded-xl text-xs font-extrabold text-navy-950 bg-emerald-400 hover:bg-emerald-300 shadow-md hover:shadow-lg transition flex items-center space-x-2 border border-emerald-300">
+                    <i class="fa-solid fa-gift text-sm"></i>
+                    <span>30 Dias Sem Pagar</span>
+                </button>
             </div>
         </div>
     </header>
@@ -130,29 +130,64 @@
                 
                 <!-- Coluna Esquerda: Mensagem de Vendas -->
                 <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
-                    <div class="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
-                        <i class="fa-solid fa-shield-halved text-sm"></i>
-                        <span>Garantia de Sigilo Absoluto e Conformidade com o Código Civil</span>
+                    <!-- Selo de Destaque 30 Dias -->
+                    <div class="inline-flex items-center space-x-2.5 px-4 py-2 rounded-full bg-emerald-500/20 border-2 border-emerald-400/80 text-emerald-300 text-xs sm:text-sm font-black shadow-lg shadow-emerald-500/20">
+                        <i class="fa-solid fa-gift text-emerald-400 text-base animate-bounce"></i>
+                        <span>30 DIAS SEM PAGAR PARA CONHECER A FERRAMENTA • 100% GRÁTIS</span>
                     </div>
 
                     <h1 class="text-3xl sm:text-5xl lg:text-5xl font-black text-white leading-tight tracking-tight">
-                        Acabe com as <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">Brigas de Vizinhos</span> e Barulho no Condomínio via WhatsApp 24h.
+                        Acabe com as <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">Brigas de Vizinhos</span> e o Barulho no Condomínio via WhatsApp 24h.
                     </h1>
 
                     <p class="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl mx-auto lg:mx-0">
                         O primeiro mediador inteligente para condomínios. Protege a identidade do denunciante, automatiza notificações em 1 clique e <strong>devolve a paz e o sono tranquilo ao síndico</strong>.
                     </p>
 
+                    <!-- Banner de Chamada dos 30 Dias na Frente da Landpage -->
+                    <div class="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/90 via-slate-900 to-navy-950 border-2 border-emerald-400/40 shadow-xl flex flex-col sm:flex-row items-center sm:items-start gap-3.5 text-left">
+                        <div class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl flex-shrink-0 border border-emerald-400/30">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm font-black text-white">Experimente 30 Dias Livres sem Pagar Nada</span>
+                                <span class="text-[10px] uppercase px-2 py-0.5 rounded-full bg-emerald-400 text-navy-950 font-black">Zero Risco</span>
+                            </div>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Ative a ferramenta no seu condomínio hoje. Seus moradores e a portaria testam todas as funcionalidades na prática por 30 dias corridos antes de qualquer pagamento. <strong>Não pedimos cartão de crédito!</strong>
+                            </p>
+                        </div>
+                    </div>
+
                     <!-- CTAs de Conversão -->
-                    <div class="pt-4 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-                        <a href="https://pay.kiwify.com.br/mByEbbl" target="_blank" class="w-full sm:w-auto px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-navy-950 font-black rounded-2xl text-sm shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition transform hover:-translate-y-0.5 flex items-center justify-center space-x-3 text-center">
-                            <i class="fa-solid fa-bolt text-base"></i>
-                            <span>CONTRATAR AGORA — R$ 199/MÊS</span>
-                        </a>
+                    <div class="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+                        <button onclick="abrirModalDegustacao()" class="w-full sm:w-auto px-8 py-4 bg-emerald-400 hover:bg-emerald-300 text-navy-950 font-black rounded-2xl text-sm shadow-xl shadow-emerald-500/30 hover:shadow-emerald-500/50 transition transform hover:-translate-y-0.5 flex items-center justify-center space-x-3 text-center border-2 border-emerald-300">
+                            <i class="fa-solid fa-gift text-base"></i>
+                            <span>COMEÇAR 30 DIAS SEM PAGAR</span>
+                        </button>
                         <a href="/painel" class="w-full sm:w-auto px-6 py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl text-sm border border-slate-700 transition flex items-center justify-center space-x-2">
                             <i class="fa-solid fa-laptop-code text-emerald-400"></i>
-                            <span>Testar Painel do Síndico</span>
+                            <span>Acessar Painel do Síndico</span>
                         </a>
+                    </div>
+
+                    <!-- Selos de Confiança e Garantia -->
+                    <div class="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-[11px] text-slate-400 pt-1">
+                        <div class="flex items-center space-x-1.5">
+                            <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                            <span>Sem cartão de crédito</span>
+                        </div>
+                        <span class="text-slate-700">•</span>
+                        <div class="flex items-center space-x-1.5">
+                            <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                            <span>Sem fidelidade ou carência</span>
+                        </div>
+                        <span class="text-slate-700">•</span>
+                        <div class="flex items-center space-x-1.5">
+                            <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                            <span>Ativação imediata no WhatsApp</span>
+                        </div>
                     </div>
 
                     <!-- Mini Benefícios -->
@@ -245,6 +280,84 @@
                     </div>
                 </div>
 
+            </div>
+        </div>
+    </section>
+
+    
+    <!-- ==================== SEÇÃO: 30 DIAS SEM PAGAR (DEGUSTAÇÃO COMPLETA) ==================== -->
+    <section id="degustacao" class="py-16 bg-gradient-to-b from-slate-900 to-navy-950 text-white border-y border-slate-800 relative overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="text-center max-w-3xl mx-auto mb-12 space-y-3">
+                <span class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 uppercase tracking-wider">
+                    <i class="fa-solid fa-handshake"></i>
+                    <span>Compromisso de Confiança Total</span>
+                </span>
+                <h2 class="text-3xl sm:text-4xl font-black text-white">
+                    Como funcionam os <span class="text-emerald-400">30 dias sem pagar</span> para conhecer a ferramenta?
+                </h2>
+                <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                    Você coloca a inteligência artificial para rodar no condomínio e vivencia a paz condominial no dia a dia. Se ao final dos 30 dias o síndico e os moradores não estiverem encantados, basta não continuar. <strong>Zero risco, zero letras miúdas.</strong>
+                </p>
+            </div>
+
+            <!-- 3 Pilares da Degustação Gratuita -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                <!-- Passo 1 -->
+                <div class="bg-slate-800/80 rounded-2xl p-6 border border-slate-700 hover:border-emerald-500/50 transition space-y-3">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-black text-xl border border-emerald-500/30">
+                        1
+                    </div>
+                    <h3 class="text-lg font-bold text-white">Ativação Sem Cartão</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Você não precisa digitar cartão de crédito nem assinar contratos longos. Basta nos chamar no WhatsApp ou acessar o painel para liberar o bot do condomínio.
+                    </p>
+                </div>
+
+                <!-- Passo 2 -->
+                <div class="bg-slate-800/80 rounded-2xl p-6 border border-emerald-500/60 shadow-lg shadow-emerald-500/10 transition space-y-3 relative">
+                    <div class="absolute -top-3 right-6 bg-emerald-400 text-navy-950 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full">
+                        Tudo Liberado
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-xl border border-emerald-500/40">
+                        2
+                    </div>
+                    <h3 class="text-lg font-bold text-white">Uso 100% Completo por 30 Dias</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Moradores usam o WhatsApp para barulho, o síndico modera em 1 clique, a portaria tira fotos de achados e perdidos e as reservas de churrasqueira funcionam sem conflito.
+                    </p>
+                </div>
+
+                <!-- Passo 3 -->
+                <div class="bg-slate-800/80 rounded-2xl p-6 border border-slate-700 hover:border-emerald-500/50 transition space-y-3">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-black text-xl border border-emerald-500/30">
+                        3
+                    </div>
+                    <h3 class="text-lg font-bold text-white">Decida Só Depois de Testar</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Se gostar do resultado e da tranquilidade reconquistada, continue por apenas <strong>R$ 199/mês</strong> por condomínio. Se não quiser continuar, a conta é suspensa sem nenhuma cobrança.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Box Central de Chamada da Degustação -->
+            <div class="bg-gradient-to-r from-emerald-950 via-slate-800 to-emerald-950 p-6 sm:p-8 rounded-3xl border-2 border-emerald-400/50 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="space-y-2 text-center md:text-left">
+                    <h4 class="text-xl sm:text-2xl font-black text-white">Quer colocar a ferramenta para rodar hoje no seu condomínio?</h4>
+                    <p class="text-xs sm:text-sm text-slate-300">
+                        Fale diretamente com Luciano e garanta os <strong>30 dias livres sem pagar</strong> para sua gestão.
+                    </p>
+                </div>
+                <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                    <button onclick="abrirModalDegustacao()" class="w-full sm:w-auto px-6 py-3.5 bg-emerald-400 hover:bg-emerald-300 text-navy-950 font-black rounded-xl text-xs sm:text-sm shadow-lg transition flex items-center justify-center space-x-2 whitespace-nowrap">
+                        <i class="fa-solid fa-gift"></i>
+                        <span>Solicitar 30 Dias Sem Pagar</span>
+                    </button>
+                    <a href="https://wa.me/5521992113903?text=Ol%C3%A1%20Luciano,%20quero%20ativar%20os%2030%20dias%20sem%20pagar%20do%20ConciliaZap" target="_blank" class="w-full sm:w-auto px-5 py-3.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl text-xs sm:text-sm transition flex items-center justify-center space-x-2 whitespace-nowrap border border-slate-600">
+                        <i class="fa-brands fa-whatsapp text-emerald-400 text-base"></i>
+                        <span>WhatsApp (21) 99211-3903</span>
+                    </a>
+                </div>
             </div>
         </div>
     </section>
@@ -568,14 +681,29 @@
                         </ul>
                     </div>
 
-                    <div class="space-y-2 pt-4">
-                        <a href="https://pay.kiwify.com.br/mByEbbl" target="_blank" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-sm shadow-md transition flex items-center justify-center space-x-2 text-center">
-                            <i class="fa-solid fa-credit-card"></i>
-                            <span>Pagar na Kiwify (Cartão até 12x, PIX ou Boleto)</span>
+                    <!-- Destaque 30 Dias no Preço -->
+                    <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-left space-y-1">
+                        <div class="flex items-center space-x-1.5 text-xs font-black text-emerald-800">
+                            <i class="fa-solid fa-gift text-emerald-600"></i>
+                            <span>30 DIAS INICIAIS SEM PAGAR (DEGUSTAÇÃO)</span>
+                        </div>
+                        <p class="text-[11px] text-emerald-700 leading-snug">
+                            Você pode começar hoje mesmo sem pagar nada. Conheça e aprove no condomínio. Sua mensalidade de R$ 199 só é devida após os 30 dias de teste!
+                        </p>
+                    </div>
+
+                    <div class="space-y-2 pt-2">
+                        <button onclick="abrirModalDegustacao()" class="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-navy-950 font-black rounded-xl text-sm shadow-md transition flex items-center justify-center space-x-2 text-center">
+                            <i class="fa-solid fa-gift"></i>
+                            <span>COMEÇAR TESTE DE 30 DIAS SEM PAGAR</span>
+                        </button>
+                        <a href="https://pay.kiwify.com.br/mByEbbl" target="_blank" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition flex items-center justify-center space-x-2 text-center">
+                            <i class="fa-solid fa-credit-card text-emerald-400"></i>
+                            <span>Ou Assinar Direto na Kiwify (R$ 199/mês)</span>
                         </a>
-                        <button onclick="abrirModalPixLanding()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition flex items-center justify-center space-x-2">
+                        <button onclick="abrirModalPixLanding()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-[11px] transition flex items-center justify-center space-x-2">
                             <i class="fa-solid fa-qrcode text-emerald-600"></i>
-                            <span>Pagar com Chave PIX Oficial Bacen</span>
+                            <span>Pagar com Chave PIX Oficial Bacen (Luciano)</span>
                         </button>
                     </div>
                 </div>
@@ -638,9 +766,23 @@
             </div>
 
             <div class="space-y-4 text-xs sm:text-sm">
+                <!-- Pergunta 1: 30 dias sem pagar -->
+                <details class="group bg-emerald-50/80 p-5 rounded-2xl border-2 border-emerald-300 cursor-pointer" open>
+                    <summary class="font-extrabold text-emerald-950 flex justify-between items-center text-sm">
+                        <span class="flex items-center space-x-2">
+                            <i class="fa-solid fa-gift text-emerald-600"></i>
+                            <span>Como funciona o período de 30 dias sem pagar para conhecer a ferramenta?</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-down text-emerald-600 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <p class="mt-3 text-slate-700 leading-relaxed text-xs sm:text-sm">
+                        <strong>É 100% gratuito, sem cartão de crédito e sem pegadinhas.</strong> Nós liberamos a ferramenta para o seu condomínio e você pode usá-la livremente por 30 dias corridos com todos os moradores, síndico e portaria. Nosso objetivo é que você conheça a eficiência do mediador autônomo na prática antes de desembolsar qualquer valor. Só continua e paga os R$ 199/mês se você aprovar os resultados obtidos!
+                    </p>
+                </details>
+
                 <details class="group bg-slate-50 p-5 rounded-2xl border border-slate-200 cursor-pointer">
                     <summary class="font-bold text-slate-900 flex justify-between items-center">
-                        <span>1. Os moradores precisam pagar alguma taxa para usar o ConciliaZap?</span>
+                        <span>2. Os moradores precisam pagar alguma taxa para usar o ConciliaZap?</span>
                         <i class="fa-solid fa-chevron-down text-slate-400 group-open:rotate-180 transition"></i>
                     </summary>
                     <p class="mt-3 text-slate-600 leading-relaxed">
@@ -850,5 +992,87 @@
         }
     </script>
 
+
+    <!-- ==================== MODAL DEGUSTAÇÃO 30 DIAS SEM PAGAR ==================== -->
+    <div id="modalDegustacao" class="fixed inset-0 z-50 bg-navy-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border-2 border-emerald-400 relative animate-in fade-in zoom-in duration-200">
+            <button onclick="fecharModalDegustacao()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark text-base"></i>
+            </button>
+
+            <div class="text-center space-y-2 mb-6">
+                <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto text-2xl shadow-sm border border-emerald-300">
+                    <i class="fa-solid fa-gift"></i>
+                </div>
+                <h3 class="text-2xl font-black text-slate-900">Ativar 30 Dias Sem Pagar</h3>
+                <p class="text-xs text-slate-600">
+                    Conheça o ConciliaZap no seu condomínio sem pagar nada e <strong>sem precisar cadastrar cartão de crédito</strong>.
+                </p>
+            </div>
+
+            <form onsubmit="concluirAtivacaoDegustacao(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Nome do seu Condomínio *</label>
+                    <input type="text" id="degustCondoNome" required placeholder="Ex: Residencial Colinas do Parque" class="w-full text-xs p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Seu Nome / Cargo *</label>
+                        <input type="text" id="degustSeuNome" required placeholder="Ex: Carlos (Síndico)" class="w-full text-xs p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">WhatsApp para Ativação *</label>
+                        <input type="text" id="degustWhatsApp" required placeholder="Ex: (21) 99999-8888" class="w-full text-xs p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Quantidade Aproximada de Unidades/Aptos</label>
+                    <input type="text" id="degustUnidades" placeholder="Ex: 48 apartamentos" class="w-full text-xs p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                </div>
+
+                <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-[11px] text-emerald-800 flex items-center space-x-2">
+                    <i class="fa-solid fa-shield-halved text-emerald-600 text-sm"></i>
+                    <span><strong>Garantia Total:</strong> Sem cobrança automática, sem fidelidade e sem custos ocultos.</span>
+                </div>
+
+                <button type="submit" class="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-navy-950 font-black rounded-xl text-sm shadow-md transition flex items-center justify-center space-x-2">
+                    <i class="fa-brands fa-whatsapp text-lg"></i>
+                    <span>LIBERAR MEUS 30 DIAS GRÁTIS NO WHATSAPP</span>
+                </button>
+            </form>
+
+            <div class="mt-4 text-center">
+                <a href="/painel" class="text-xs text-slate-500 hover:text-emerald-600 font-semibold transition">
+                    Ou acesse o Painel de Demonstração online agora &rarr;
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts da Modal de Degustação -->
+    <script>
+        function abrirModalDegustacao() {
+            document.getElementById('modalDegustacao').classList.remove('hidden');
+        }
+        function fecharModalDegustacao() {
+            document.getElementById('modalDegustacao').classList.add('hidden');
+        }
+        function concluirAtivacaoDegustacao(e) {
+            e.preventDefault();
+            const condo = document.getElementById('degustCondoNome').value.trim();
+            const nome = document.getElementById('degustSeuNome').value.trim();
+            const zap = document.getElementById('degustWhatsApp').value.trim();
+            const qtd = document.getElementById('degustUnidades').value.trim() || 'Não informado';
+            
+            const texto = `Olá Luciano, gostaria de ativar os 30 DIAS SEM PAGAR do ConciliaZap para conhecer a ferramenta!%0A%0A*Condomínio:* ${encodeURIComponent(condo)}%0A*Contato:* ${encodeURIComponent(nome)} (${encodeURIComponent(zap)})%0A*Unidades:* ${encodeURIComponent(qtd)}`;
+            
+            window.open(`https://wa.me/5521992113903?text=${texto}`, '_blank');
+            fecharModalDegustacao();
+        }
+    </script>
+
 </body>
 </html>
+
