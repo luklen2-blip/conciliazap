@@ -251,3 +251,4 @@ if __name__ == "__main__":
     print(" SUÍTE DE TESTES: AUDITORIA MULTI-TENANT E MODELO COMERCIAL CONCILIAZAP")
     print("="*70 + "\n")
     unittest.main(verbosity=2)
+

@@ -2059,15 +2059,28 @@ if os.path.exists(public_dir):
     app.mount("/static", StaticFiles(directory=public_dir), name="static")
 
 @app.get("/")
+@app.get("/landing")
+@app.get("/inicio")
+async def servir_landing_page():
+    for base in CANDIDATE_DIRS:
+        caminho_landing = os.path.join(base, "landing.html")
+        if os.path.exists(caminho_landing):
+            return FileResponse(caminho_landing)
+        caminho_index = os.path.join(base, "index.html")
+        if os.path.exists(caminho_index):
+            return FileResponse(caminho_index)
+            
+    return HTMLResponse("<h1>ConciliaZap rodando! Acesse /api/health ou crie landing.html</h1>")
+
 @app.get("/painel")
-async def servir_frontend_principal():
+@app.get("/app")
+async def servir_painel_principal():
     for base in CANDIDATE_DIRS:
         caminho_index = os.path.join(base, "index.html")
         if os.path.exists(caminho_index):
             return FileResponse(caminho_index)
             
-    # Fallback se index.html ainda não existir fisicamente
-    return HTMLResponse("<h1>ConciliaZap rodando! Acesse /api/health ou crie index.html</h1>")
+    return HTMLResponse("<h1>ConciliaZap Painel rodando! Acesse /api/health ou crie index.html</h1>")
 
 # Fallback universal para outros arquivos estáticos requisitados
 @app.get("/{caminho:path}")

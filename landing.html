@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConciliaZap — Plataforma Autônoma de Mediação Condominial 24/7</title>
+    <meta name="description" content="Acabe com as brigas de vizinhos e barulho no seu condomínio. O ConciliaZap é a primeira plataforma de mediação autônoma via WhatsApp com sigilo absoluto e moderação em 1 clique.">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        },
+                        navy: {
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts & FontAwesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .gradient-hero {
+            background: radial-gradient(circle at top right, rgba(34, 197, 94, 0.15) 0%, rgba(15, 23, 42, 0) 60%),
+                        radial-gradient(circle at bottom left, rgba(2, 132, 199, 0.12) 0%, rgba(15, 23, 42, 0) 50%);
+        }
+        .chat-bubble-received {
+            background: #ffffff;
+            border-radius: 12px 12px 12px 2px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+        }
+        .chat-bubble-sent {
+            background: #dcfce7;
+            border-radius: 12px 12px 2px 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+            color: #14532d;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-brand-500 selection:text-white">
+
+    <!-- ==================== TOP BAR INFORMATIVA ==================== -->
+    <div class="bg-navy-950 text-slate-300 text-xs py-2 px-4 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+            <div class="flex items-center space-x-2 text-center sm:text-left">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">NOVIDADE 2.0</span>
+                <span>Portaria Digital e Mediação Autônoma 24 Horas no WhatsApp</span>
+            </div>
+            <div class="flex items-center space-x-4 text-[11px]">
+                <a href="https://wa.me/5521992113903?text=Ol%C3%A1%20Luciano,%20gostaria%20de%20tirar%20d%C3%BAvidas%20sobre%20o%20ConciliaZap" target="_blank" class="hover:text-emerald-400 transition flex items-center space-x-1">
+                    <i class="fa-brands fa-whatsapp text-emerald-400"></i>
+                    <span>Atendimento Comercial: (21) 99211-3903</span>
+                </a>
+                <span class="text-slate-600 hidden sm:inline">•</span>
+                <a href="/painel" class="text-emerald-400 hover:text-emerald-300 font-bold transition flex items-center space-x-1">
+                    <i class="fa-solid fa-lock text-[10px]"></i>
+                    <span>Área do Síndico / Painel</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== NAVBAR ==================== -->
+    <header class="bg-white/90 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <a href="/" class="flex items-center space-x-3">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-brand-700 to-emerald-500 text-white flex items-center justify-center text-xl shadow-lg shadow-emerald-500/25">
+                    <i class="fa-solid fa-scale-balanced"></i>
+                </div>
+                <div>
+                    <span class="text-xl font-black text-slate-900 tracking-tight flex items-center">
+                        Concilia<span class="text-emerald-600">Zap</span>
+                    </span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-600 block">Paz Condominial 24/7</span>
+                </div>
+            </a>
+
+            <!-- Menu Desktop -->
+            <nav class="hidden md:flex items-center space-x-8 text-sm font-semibold text-slate-600">
+                <a href="#como-funciona" class="hover:text-emerald-600 transition">Como Funciona</a>
+                <a href="#recursos" class="hover:text-emerald-600 transition">Recursos</a>
+                <a href="#simulador" class="hover:text-emerald-600 transition">Simulador</a>
+                <a href="#precos" class="hover:text-emerald-600 transition">Planos & Preços</a>
+                <a href="#duvidas" class="hover:text-emerald-600 transition">FAQ</a>
+            </nav>
+
+            <!-- Ações -->
+            <div class="flex items-center space-x-3">
+                <a href="/painel" class="hidden sm:flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition border border-slate-200">
+                    <i class="fa-solid fa-gauge-high text-slate-500"></i>
+                    <span>Entrar no Painel</span>
+                </a>
+                <a href="#precos" class="px-5 py-2.5 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md hover:shadow-lg transition flex items-center space-x-2">
+                    <i class="fa-solid fa-credit-card"></i>
+                    <span>Contratar (R$ 199)</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==================== HERO SECTION ==================== -->
+    <section class="relative bg-navy-900 text-white pt-16 pb-24 overflow-hidden gradient-hero">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                
+                <!-- Coluna Esquerda: Mensagem de Vendas -->
+                <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+                        <i class="fa-solid fa-shield-halved text-sm"></i>
+                        <span>Garantia de Sigilo Absoluto e Conformidade com o Código Civil</span>
+                    </div>
+
+                    <h1 class="text-3xl sm:text-5xl lg:text-5xl font-black text-white leading-tight tracking-tight">
+                        Acabe com as <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">Brigas de Vizinhos</span> e Barulho no Condomínio via WhatsApp 24h.
+                    </h1>
+
+                    <p class="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl mx-auto lg:mx-0">
+                        O primeiro mediador inteligente para condomínios. Protege a identidade do denunciante, automatiza notificações em 1 clique e <strong>devolve a paz e o sono tranquilo ao síndico</strong>.
+                    </p>
+
+                    <!-- CTAs de Conversão -->
+                    <div class="pt-4 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+                        <a href="https://pay.kiwify.com.br/mByEbbl" target="_blank" class="w-full sm:w-auto px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-navy-950 font-black rounded-2xl text-sm shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition transform hover:-translate-y-0.5 flex items-center justify-center space-x-3 text-center">
+                            <i class="fa-solid fa-bolt text-base"></i>
+                            <span>CONTRATAR AGORA — R$ 199/MÊS</span>
+                        </a>
+                        <a href="/painel" class="w-full sm:w-auto px-6 py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl text-sm border border-slate-700 transition flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-laptop-code text-emerald-400"></i>
+                            <span>Testar Painel do Síndico</span>
+                        </a>
+                    </div>
+
+                    <!-- Mini Benefícios -->
+                    <div class="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-4 border-t border-slate-800/80 text-left">
+                        <div class="space-y-1">
+                            <div class="text-emerald-400 font-extrabold text-sm flex items-center space-x-1">
+                                <i class="fa-solid fa-user-secret"></i>
+                                <span>100% Anônimo</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Vizinho nunca sabe quem reclamou</p>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="text-emerald-400 font-extrabold text-sm flex items-center space-x-1">
+                                <i class="fa-solid fa-file-pdf"></i>
+                                <span>Laudo em PDF</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Com validade jurídica imediata</p>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="text-emerald-400 font-extrabold text-sm flex items-center space-x-1">
+                                <i class="fa-solid fa-building-circle-check"></i>
+                                <span>Sem App</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Funciona direto no WhatsApp</p>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="text-emerald-400 font-extrabold text-sm flex items-center space-x-1">
+                                <i class="fa-solid fa-clock"></i>
+                                <span>Ativação 24/7</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Liberação automática na Kiwify</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coluna Direita: Mockup Visual Realista -->
+                <div class="lg:col-span-5 relative">
+                    <div class="relative mx-auto max-w-sm rounded-[32px] p-3 bg-gradient-to-b from-slate-700 to-slate-900 shadow-2xl border border-slate-600">
+                        <div class="bg-slate-100 rounded-[26px] overflow-hidden text-slate-800">
+                            
+                            <!-- Topo do Mockup Celular -->
+                            <div class="bg-emerald-700 p-3.5 text-white flex items-center space-x-3">
+                                <div class="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-xs">
+                                    <i class="fa-solid fa-robot"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-extrabold text-xs">Portaria Digital ConciliaZap</h4>
+                                    <span class="text-[9px] text-emerald-200 flex items-center">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-300 mr-1 inline-block animate-pulse"></span>
+                                        Online 24 Horas
+                                    </span>
+                                </div>
+                                <i class="fa-solid fa-shield-halved text-emerald-300 text-sm"></i>
+                            </div>
+
+                            <!-- Mensagens da Conversa -->
+                            <div class="p-3.5 space-y-3 bg-[#efeae2] min-h-[340px] text-xs">
+                                <div class="chat-bubble-received p-3 max-w-[85%]">
+                                    <p class="text-slate-800 font-medium">Boa noite! O apartamento 402 bloco A está com som alto e gritaria insuportável agora.</p>
+                                    <span class="text-[9px] text-slate-400 block text-right mt-1">22:45</span>
+                                </div>
+
+                                <div class="chat-bubble-sent p-3 max-w-[90%] ml-auto">
+                                    <p class="font-bold text-emerald-950 mb-1">⚖️ Ocorrência #0042 Registrada</p>
+                                    <p class="text-[11px] leading-relaxed">Olá! Recebemos o relato sobre a unidade <strong>402 - Bloco A</strong>.</p>
+                                    <div class="mt-2 p-1.5 bg-emerald-200/50 rounded text-[10px] text-emerald-900 font-semibold">
+                                        🔒 Sua identidade permanece em SIGILO ABSOLUTO.
+                                    </div>
+                                    <span class="text-[9px] text-emerald-800 block text-right mt-1">22:45 ✓✓</span>
+                                </div>
+
+                                <!-- Card de Moderação do Síndico integrado -->
+                                <div class="bg-white rounded-xl p-2.5 shadow-md border-l-4 border-blue-600 space-y-1.5">
+                                    <div class="flex justify-between items-center text-[10px]">
+                                        <span class="font-black text-slate-800">Painel do Síndico</span>
+                                        <span class="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">1ª Reincidência</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-600">Sanção homologada pelo síndico:</p>
+                                    <div class="flex gap-1 text-[9px] font-bold">
+                                        <span class="flex-1 py-1 bg-amber-500 text-white rounded text-center">🟡 Advertência</span>
+                                        <span class="flex-1 py-1 bg-red-600 text-white rounded text-center">📄 Laudo PDF</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="p-2.5 bg-white border-t border-slate-200 text-center">
+                                <span class="text-[10px] text-slate-400 font-medium">Simulação Realista do Sistema ConciliaZap</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== SEÇÃO: O PROBLEMA VS A SOLUÇÃO ==================== -->
+    <section class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16 space-y-3">
+                <span class="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">A Realidade dos Condomínios</span>
+                <h2 class="text-3xl sm:text-4xl font-black text-slate-900">Por que o modelo antigo de reclamação fracassou?</h2>
+                <p class="text-slate-600 text-sm sm:text-base">
+                    Colocar vizinho contra vizinho destrói a convivência. O ConciliaZap assume a mediação de forma impessoal e profissional.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- O Modo Antigo (Pesadelo) -->
+                <div class="bg-red-50/50 rounded-3xl p-8 border border-red-200 space-y-5">
+                    <div class="flex items-center space-x-3">
+                        <span class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center font-bold text-lg">
+                            <i class="fa-solid fa-xmark"></i>
+                        </span>
+                        <h3 class="text-xl font-bold text-red-950">Sem o ConciliaZap (Pesadelo)</h3>
+                    </div>
+                    <ul class="space-y-3.5 text-sm text-slate-700">
+                        <li class="flex items-start space-x-3">
+                            <i class="fa-solid fa-circle-xmark text-red-500 mt-1"></i>
+                            <span><strong>Síndico sobrecarregado:</strong> Chamadas e mensagens de madrugada no celular pessoal para resolver brigas de barulho.</span>
+                        </li>
+                        <li class="flex items-start space-x-3">
+                            <i class="fa-solid fa-circle-xmark text-red-500 mt-1"></i>
+                            <span><strong>Brigas e Constrangimento:</strong> Moradores discutindo no corredor ou trocando ofensas nos grupos de WhatsApp.</span>
+                        </li>
+                        <li class="flex items-start space-x-3">
+                            <i class="fa-solid fa-circle-xmark text-red-500 mt-1"></i>
+                            <span><strong>Medo de Retaliação:</strong> Vizinhos sofrem com barulho mas não denunciam com medo de perseguição no prédio.</span>
+                        </li>
+                        <li class="flex items-start space-x-3">
+                            <i class="fa-solid fa-circle-xmark text-red-500 mt-1"></i>
+                            <span><strong>Falta de Provas e Laudos:</strong> Notificações frágeis que geram processos judiciais e contestações contra o síndico.</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- O Modo ConciliaZap (Paz Total) -->
+                <div class="bg-emerald-50/60 rounded-3xl p-8 border border-emerald-300 space-y-5 shadow-lg shadow-emerald-500/5">
+                    <div class="flex items-center space-x-3">
+                        <span class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-lg">
+                            <i class="fa-solid fa-check"></i>
+                        </span>
+                        <h3 class="text-xl font-bold text-emerald-950">Com o ConciliaZap (Paz & Ordem)</h3>
+                    </div>
+                    <ul class="space-y-3.5 text-sm text-slate-700">
+                        <li class="flex items-start space-x-3">
+                            <i class="fa-solid fa-circle-check text-emerald-600 mt-1"></i>
+                            <span><strong>Atendimento Autônomo 24/7:</strong> O robô recebe a denúncia, acolhe o morador e coleta áudio/vídeo imediatamente.</span>
+                        </li>
+                        <li class="flex items-start space-x-3">
+                            <i class="fa-solid fa-circle-check text-emerald-600 mt-1"></i>
+                            <span><strong>Sigilo Absoluto:</strong> O infrator recebe a notificação da administração e NUNCA descobre quem reclamou.</span>
+                        </li>
+                        <li class="flex items-start space-x-3">
+                            <i class="fa-solid fa-circle-check text-emerald-600 mt-1"></i>
+                            <span><strong>Moderação com 1 Clique:</strong> O síndico visualiza a reincidência e aprova o Aviso, Advertência ou Multa na hora.</span>
+                        </li>
+                        <li class="flex items-start space-x-3">
+                            <i class="fa-solid fa-circle-check text-emerald-600 mt-1"></i>
+                            <span><strong>Blindagem Jurídica:</strong> Emissão imediata de Auto de Infração em PDF com enquadramento no Código Civil e QR Code.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== SEÇÃO: COMO FUNCIONA EM 3 PASSOS ==================== -->
+    <section id="como-funciona" class="py-20 bg-slate-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16 space-y-3">
+                <span class="text-xs font-black uppercase tracking-wider text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">Simplicidade Extrema</span>
+                <h2 class="text-3xl sm:text-4xl font-black text-slate-900">Como funciona no dia a dia do condomínio</h2>
+                <p class="text-slate-600 text-sm sm:text-base">
+                    Nenhum morador precisa baixar aplicativo. O sistema roda 100% no WhatsApp que todos já usam.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Passo 1 -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 font-black text-xl flex items-center justify-center">
+                        01
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 flex items-center space-x-2">
+                        <i class="fa-brands fa-whatsapp text-emerald-600"></i>
+                        <span>O Morador Envia Mensagem</span>
+                    </h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Ao notar barulho fora do horário de silêncio, o condômino manda um texto para a Portaria Digital. O robô acolhe a queixa e blinda o sigilo do reclamante.
+                    </p>
+                </div>
+
+                <!-- Passo 2 -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+                    <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-700 font-black text-xl flex items-center justify-center">
+                        02
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 flex items-center space-x-2">
+                        <i class="fa-solid fa-gavel text-blue-600"></i>
+                        <span>O Síndico Modera em 1 Clique</span>
+                    </h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Pelo celular ou computador, o síndico visualiza o histórico de reincidências e decide se aplica Aviso Amigável, Advertência Formal ou Multa pecuniária.
+                    </p>
+                </div>
+
+                <!-- Passo 3 -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-4">
+                    <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-700 font-black text-xl flex items-center justify-center">
+                        03
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 flex items-center space-x-2">
+                        <i class="fa-solid fa-file-pdf text-purple-600"></i>
+                        <span>Notificação Oficial Emitida</span>
+                    </h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        O infrator recebe a advertência no WhatsApp de forma impessoal e educada. Se necessário, o síndico imprime o laudo formal para cobrança na taxa.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== SEÇÃO: 6 RECURSOS COMPLETOS ==================== -->
+    <section id="recursos" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16 space-y-3">
+                <span class="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">Tudo em Uma Só Plataforma</span>
+                <h2 class="text-3xl sm:text-4xl font-black text-slate-900">Muito mais que mediação de barulho</h2>
+                <p class="text-slate-600 text-sm sm:text-base">
+                    Uma central completa de gestão para o condomínio moderno operar 24 horas por dia com máxima eficiência.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Card 1 -->
+                <div class="p-6 bg-slate-50 rounded-2xl border border-slate-200 hover:border-emerald-500/50 hover:shadow-md transition space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-user-secret"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900 text-base">Sigilo Absoluto & Anonimato</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Garante que moradores registrem ocorrências com segurança. O vizinho reclamado jamais saberá quem enviou a queixa.
+                    </p>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="p-6 bg-slate-50 rounded-2xl border border-slate-200 hover:border-emerald-500/50 hover:shadow-md transition space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-gavel"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900 text-base">Moderação com 1 Clique</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Fila inteligente com cálculo automático de reincidências para aplicação rápida de aviso, advertência ou multa.
+                    </p>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="p-6 bg-slate-50 rounded-2xl border border-slate-200 hover:border-emerald-500/50 hover:shadow-md transition space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-red-100 text-red-700 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-file-pdf"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900 text-base">Laudo Jurídico em PDF</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Auto de infração timbrado com fundamentação no Código Civil e Regimento Interno, pronto para impressão com QR Code.
+                    </p>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="p-6 bg-slate-50 rounded-2xl border border-slate-200 hover:border-emerald-500/50 hover:shadow-md transition space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-calendar-check"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900 text-base">Reservas de Áreas Comuns</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Agendamento de churrasqueira e salão de festas pelo WhatsApp ou painel com bloqueio automático contra conflitos de agenda.
+                    </p>
+                </div>
+
+                <!-- Card 5 -->
+                <div class="p-6 bg-slate-50 rounded-2xl border border-slate-200 hover:border-emerald-500/50 hover:shadow-md transition space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-camera"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900 text-base">Achados & Perdidos com Foto</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        A portaria tira foto do objeto encontrado com a câmera do celular. Moradores visualizam os itens com foto no painel ou WhatsApp.
+                    </p>
+                </div>
+
+                <!-- Card 6 -->
+                <div class="p-6 bg-slate-50 rounded-2xl border border-slate-200 hover:border-emerald-500/50 hover:shadow-md transition space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center text-lg">
+                        <i class="fa-brands fa-whatsapp"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-900 text-base">Portaria Digital 24/7</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Integração completa com instâncias do WhatsApp (Evolution API / Z-API). O robô atende 24 horas sem necessidade de operador humano.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== SEÇÃO: SIMULADOR INTERATIVO ==================== -->
+    <section id="simulador" class="py-20 bg-navy-950 text-white">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-2xl mx-auto mb-12 space-y-3">
+                <span class="text-xs font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/30">Teste Agora</span>
+                <h2 class="text-3xl font-black text-white">Experimente o Atendimento do Robô</h2>
+                <p class="text-slate-400 text-xs sm:text-sm">
+                    Clique nas mensagens de teste abaixo para ver como o ConciliaZap responde e acolhe as ocorrências em tempo real.
+                </p>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6">
+                <!-- Botões de Teste Rápido -->
+                <div class="flex flex-wrap gap-2 justify-center">
+                    <button onclick="simularMensagemLanding('Tem som alto no 402 bloco A')" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-volume-high text-amber-400"></i>
+                        <span>"Tem som alto no 402 bloco A"</span>
+                    </button>
+                    <button onclick="simularMensagemLanding('Quero reservar a churrasqueira sábado')" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-calendar text-purple-400"></i>
+                        <span>"Quero reservar a churrasqueira"</span>
+                    </button>
+                    <button onclick="simularMensagemLanding('Alguém achou uma chave na garagem?')" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-key text-blue-400"></i>
+                        <span>"Alguém achou uma chave?"</span>
+                    </button>
+                </div>
+
+                <!-- Chat Box -->
+                <div class="bg-[#efeae2] text-slate-800 rounded-2xl p-4 min-h-[220px] max-h-[350px] overflow-y-auto space-y-3" id="landingChatMessages">
+                    <div class="chat-bubble-sent p-3 max-w-[85%] ml-auto text-xs">
+                        <p class="font-bold text-emerald-950 mb-0.5">⚖️ ConciliaZap Portaria Digital</p>
+                        <p>Olá! Sou a Portaria Digital do condomínio. Como posso te ajudar hoje?</p>
+                        <span class="text-[9px] text-emerald-700 block text-right mt-1">24/7</span>
+                    </div>
+                </div>
+
+                <!-- Input simulado -->
+                <div class="flex gap-2">
+                    <input type="text" id="landingChatInput" placeholder="Digite uma mensagem de teste e aperte Enter..." class="flex-1 bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-3 text-xs focus:outline-none focus:border-emerald-500">
+                    <button onclick="enviarMensagemLandingInput()" class="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== SEÇÃO: PLANOS & PREÇOS ==================== -->
+    <section id="precos" class="py-20 bg-slate-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16 space-y-3">
+                <span class="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">Investimento Acessível</span>
+                <h2 class="text-3xl sm:text-4xl font-black text-slate-900">Assinatura Exclusiva por Condomínio</h2>
+                <p class="text-slate-600 text-sm sm:text-base">
+                    O condomínio é o único contratante. <strong>Nenhum morador paga nada</strong> para utilizar o serviço.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                <!-- Plano Pro Condomínio -->
+                <div class="bg-white rounded-3xl p-8 border-2 border-emerald-500 shadow-xl relative flex flex-col justify-between space-y-6">
+                    <div class="absolute -top-3.5 right-8 bg-emerald-600 text-white text-[11px] font-black uppercase tracking-wider px-3.5 py-1 rounded-full shadow-md">
+                        Mais Popular
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="space-y-1">
+                            <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider">Para Condomínios Residenciais</span>
+                            <h3 class="text-2xl font-black text-slate-900">Condomínio Pro</h3>
+                            <p class="text-xs text-slate-500">Até 200 apartamentos / unidades com cobertura completa.</p>
+                        </div>
+
+                        <div class="py-4 border-y border-slate-100 flex items-baseline space-x-2">
+                            <span class="text-4xl font-black text-slate-900">R$ 199</span>
+                            <span class="text-xs text-slate-500 font-semibold">/ mês por condomínio</span>
+                        </div>
+
+                        <ul class="space-y-3 text-xs text-slate-700">
+                            <li class="flex items-center space-x-2.5">
+                                <i class="fa-solid fa-check text-emerald-600 text-sm"></i>
+                                <span><strong>Moradores 100% Isentos</strong> de cobrança individual</span>
+                            </li>
+                            <li class="flex items-center space-x-2.5">
+                                <i class="fa-solid fa-check text-emerald-600 text-sm"></i>
+                                <span>Bot no WhatsApp Oficial do Condomínio 24/7</span>
+                            </li>
+                            <li class="flex items-center space-x-2.5">
+                                <i class="fa-solid fa-check text-emerald-600 text-sm"></i>
+                                <span>Fila de Moderação em 1 Clique (Aviso, Advertência e Multa)</span>
+                            </li>
+                            <li class="flex items-center space-x-2.5">
+                                <i class="fa-solid fa-check text-emerald-600 text-sm"></i>
+                                <span>Geração de Laudo e Auto de Infração em PDF</span>
+                            </li>
+                            <li class="flex items-center space-x-2.5">
+                                <i class="fa-solid fa-check text-emerald-600 text-sm"></i>
+                                <span>Módulo de Reservas de Churrasqueira & Salão de Festas</span>
+                            </li>
+                            <li class="flex items-center space-x-2.5">
+                                <i class="fa-solid fa-check text-emerald-600 text-sm"></i>
+                                <span>Achados e Perdidos com Fotos de Itens</span>
+                            </li>
+                            <li class="flex items-center space-x-2.5">
+                                <i class="fa-solid fa-check text-emerald-600 text-sm"></i>
+                                <span>Suporte Prioritário pelo WhatsApp</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="space-y-2 pt-4">
+                        <a href="https://pay.kiwify.com.br/mByEbbl" target="_blank" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold rounded-xl text-sm shadow-md transition flex items-center justify-center space-x-2 text-center">
+                            <i class="fa-solid fa-credit-card"></i>
+                            <span>Pagar na Kiwify (Cartão até 12x, PIX ou Boleto)</span>
+                        </a>
+                        <button onclick="abrirModalPixLanding()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-qrcode text-emerald-600"></i>
+                            <span>Pagar com Chave PIX Oficial Bacen</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Plano Administradoras / Multi-Condomínios -->
+                <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col justify-between space-y-6">
+                    <div class="space-y-4">
+                        <div class="space-y-1">
+                            <span class="text-xs font-bold text-blue-600 uppercase tracking-wider">Para Administradoras & Síndicos Profissionais</span>
+                            <h3 class="text-2xl font-black text-slate-900">Plano Master Multi-Condomínio</h3>
+                            <p class="text-xs text-slate-500">Gerencie múltiplos condomínios com painéis isolados e condições especiais.</p>
+                        </div>
+
+                        <div class="py-4 border-y border-slate-100 flex items-baseline space-x-2">
+                            <span class="text-3xl font-black text-slate-900">Sob Consulta</span>
+                            <span class="text-xs text-slate-500 font-semibold">/ desconto progressivo</span>
+                        </div>
+
+                        <ul class="space-y-3 text-xs text-slate-700">
+                            <li class="flex items-center space-x-2.5">
+                                <i class="fa-solid fa-check text-blue-600 text-sm"></i>
+                                <span>Painel Unificado para Gestão de Múltiplos Condomínios</span>
+                            </li>
+                            <li class="flex items-center space-x-2.5">
+                                <i class="fa-solid fa-check text-blue-600 text-sm"></i>
+                                <span>Isolamento Total de Dados entre Clientes (Multi-tenant)</span>
+                            </li>
+                            <li class="flex items-center space-x-2.5">
+                                <i class="fa-solid fa-check text-blue-600 text-sm"></i>
+                                <span>Relatórios Gerenciais para Assembleia</span>
+                            </li>
+                            <li class="flex items-center space-x-2.5">
+                                <i class="fa-solid fa-check text-blue-600 text-sm"></i>
+                                <span>Onboarding e Treinamento da Equipe</span>
+                            </li>
+                            <li class="flex items-center space-x-2.5">
+                                <i class="fa-solid fa-check text-blue-600 text-sm"></i>
+                                <span>Contrato Corporativo e Faturamento via CNPJ</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="pt-4">
+                        <a href="https://wa.me/5521992113903?text=Ol%C3%A1%20Luciano,%20gostaria%20de%20um%20or%C3%A7amento%20para%20o%20Plano%20Master%20ConciliaZap" target="_blank" class="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold rounded-xl text-sm shadow transition flex items-center justify-center space-x-2 text-center">
+                            <i class="fa-brands fa-whatsapp text-emerald-400"></i>
+                            <span>Falar com Luciano no WhatsApp</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== SEÇÃO: PERGUNTAS FREQUENTES (FAQ) ==================== -->
+    <section id="duvidas" class="py-20 bg-white">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16 space-y-3">
+                <span class="text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">Tire Suas Dúvidas</span>
+                <h2 class="text-3xl sm:text-4xl font-black text-slate-900">Perguntas Frequentes</h2>
+            </div>
+
+            <div class="space-y-4 text-xs sm:text-sm">
+                <details class="group bg-slate-50 p-5 rounded-2xl border border-slate-200 cursor-pointer">
+                    <summary class="font-bold text-slate-900 flex justify-between items-center">
+                        <span>1. Os moradores precisam pagar alguma taxa para usar o ConciliaZap?</span>
+                        <i class="fa-solid fa-chevron-down text-slate-400 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <p class="mt-3 text-slate-600 leading-relaxed">
+                        <strong>Não! Absolutamente nada.</strong> O modelo comercial do ConciliaZap é exclusivo para o condomínio (assinatura B2B única). Todos os moradores do condomínio têm direito de usar os serviços pelo WhatsApp gratuitamente.
+                    </p>
+                </details>
+
+                <details class="group bg-slate-50 p-5 rounded-2xl border border-slate-200 cursor-pointer">
+                    <summary class="font-bold text-slate-900 flex justify-between items-center">
+                        <span>2. O vizinho que estava fazendo barulho vai saber quem fez a queixa?</span>
+                        <i class="fa-solid fa-chevron-down text-slate-400 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <p class="mt-3 text-slate-600 leading-relaxed">
+                        <strong>Nunca! O sigilo é total e inegociável.</strong> A notificação chega para o infrator em nome da Administração do Condomínio / Portaria Digital. Ninguém do prédio tem acesso ao nome ou apartamento do reclamante.
+                    </p>
+                </details>
+
+                <details class="group bg-slate-50 p-5 rounded-2xl border border-slate-200 cursor-pointer">
+                    <summary class="font-bold text-slate-900 flex justify-between items-center">
+                        <span>3. Precisa instalar aplicativo no celular dos moradores?</span>
+                        <i class="fa-solid fa-chevron-down text-slate-400 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <p class="mt-3 text-slate-600 leading-relaxed">
+                        <strong>Não precisa baixar nada!</strong> O morador envia mensagens diretamente pelo aplicativo de WhatsApp que ele já usa todos os dias. O síndico acessa o painel pelo navegador do celular ou computador.
+                    </p>
+                </details>
+
+                <details class="group bg-slate-50 p-5 rounded-2xl border border-slate-200 cursor-pointer">
+                    <summary class="font-bold text-slate-900 flex justify-between items-center">
+                        <span>4. Como o sistema é ativado após o pagamento na Kiwify?</span>
+                        <i class="fa-solid fa-chevron-down text-slate-400 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <p class="mt-3 text-slate-600 leading-relaxed">
+                        <strong>A ativação é 100% automática e instantânea.</strong> Assim que a Kiwify aprova o pagamento (cartão ou PIX), nosso webhook oficial libera o plano do condomínio por 30 dias corridos imediatamente.
+                    </p>
+                </details>
+
+                <details class="group bg-slate-50 p-5 rounded-2xl border border-slate-200 cursor-pointer">
+                    <summary class="font-bold text-slate-900 flex justify-between items-center">
+                        <span>5. As notificações possuem validade jurídica?</span>
+                        <i class="fa-solid fa-chevron-down text-slate-400 group-open:rotate-180 transition"></i>
+                    </summary>
+                    <p class="mt-3 text-slate-600 leading-relaxed">
+                        <strong>Sim.</strong> O sistema emite autos de infração e laudos formais em PDF embasados nos Arts. 1.336 e 1.337 do Código Civil brasileiro e nas regras regimentais do condomínio, acompanhados de código de validação e QR Code.
+                    </p>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== BANNER FINAL CTA ==================== -->
+    <section class="bg-gradient-to-r from-navy-950 via-emerald-950 to-navy-950 text-white py-16">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
+            <h2 class="text-3xl sm:text-4xl font-black text-white leading-tight">
+                Leve a paz e a tranquilidade de volta ao seu condomínio hoje mesmo.
+            </h2>
+            <p class="text-slate-300 text-sm max-w-2xl mx-auto">
+                Mais de centenas de ocorrências mediadas sem discussão, com total amparo jurídico e sem atritos entre vizinhos.
+            </p>
+            <div class="pt-4 flex flex-col sm:flex-row justify-center items-center gap-4">
+                <a href="https://pay.kiwify.com.br/mByEbbl" target="_blank" class="px-8 py-4 bg-emerald-500 hover:bg-emerald-400 text-navy-950 font-black rounded-2xl text-sm shadow-xl shadow-emerald-500/25 transition flex items-center space-x-2">
+                    <i class="fa-solid fa-bolt"></i>
+                    <span>CONTRATAR AGORA NA KIWIFY (R$ 199/MÊS)</span>
+                </a>
+                <a href="https://wa.me/5521992113903?text=Ol%C3%A1%20Luciano,%20gostaria%20de%20contratar%20o%20ConciliaZap" target="_blank" class="px-6 py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl text-sm border border-slate-700 transition flex items-center space-x-2">
+                    <i class="fa-brands fa-whatsapp text-emerald-400"></i>
+                    <span>Falar no WhatsApp Comercial</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="bg-white border-t border-slate-200 py-10 text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-scale-balanced text-sm"></i>
+                    </div>
+                    <span class="font-extrabold text-slate-900 text-sm">ConciliaZap © 2026</span>
+                </div>
+                <div class="flex flex-wrap justify-center gap-6 font-semibold text-slate-600">
+                    <a href="/painel" class="hover:text-emerald-600 transition">Painel do Síndico</a>
+                    <a href="/manual" target="_blank" class="hover:text-emerald-600 transition">Manual Operacional</a>
+                    <a href="/termos" target="_blank" class="hover:text-emerald-600 transition">Termos de Uso</a>
+                    <a href="/privacidade" target="_blank" class="hover:text-emerald-600 transition">Privacidade & LGPD</a>
+                    <a href="https://wa.me/5521992113903" target="_blank" class="text-emerald-600 font-bold hover:underline transition">Contato: (21) 99211-3903</a>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-100 pt-6 space-y-1.5 text-[11px] text-slate-400 text-center sm:text-left">
+                <p><strong>Aviso Ético e Legal:</strong> O ConciliaZap é uma ferramenta tecnológica autônoma de apoio à gestão condominial e mediação administrativa amigável. Em casos de agressão física, violência ou risco iminente à vida, acione imediatamente a Polícia Militar através do número 190.</p>
+                <p>Classificação indicativa recomendada: 16+ anos para registros. Contratações financeiras restritas a maiores de 18 anos ou assistidos por responsáveis. Em conformidade integral com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018).</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ==================== MODAL PIX OFICIAL BACEN ==================== -->
+    <div id="modalPixLanding" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4 text-xs">
+            <div class="flex justify-between items-center border-b pb-3">
+                <div class="flex items-center space-x-2">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-qrcode"></i>
+                    </span>
+                    <div>
+                        <h3 class="font-extrabold text-sm text-slate-900">PIX Oficial Bacen (Instantâneo)</h3>
+                        <p class="text-[10px] text-slate-400">Assinatura Mensal ConciliaZap (R$ 199,00)</p>
+                    </div>
+                </div>
+                <button onclick="fecharModalPixLanding()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">×</button>
+            </div>
+
+            <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-100 space-y-2">
+                <span class="text-[10px] font-bold uppercase text-emerald-800 block">Dados da Conta do Recebedor:</span>
+                <p class="text-xs text-slate-800">Titular: <strong>Luciano da Silva Sant Anna</strong></p>
+                <p class="text-xs text-slate-800">Chave PIX (E-mail): <span class="font-mono bg-white px-2 py-0.5 rounded border border-emerald-200 font-bold text-emerald-800">luklen2@gmail.com</span></p>
+                <p class="text-xs text-slate-800">Cidade: <strong>RIO DE JANEIRO</strong></p>
+            </div>
+
+            <div class="space-y-1">
+                <label class="block font-bold text-slate-700 text-[10px] uppercase">Chave PIX para Copiar:</label>
+                <div class="flex items-center space-x-2">
+                    <input type="text" readonly value="luklen2@gmail.com" id="chavePixInputLanding" class="bg-slate-100 font-mono text-xs rounded-xl p-2.5 flex-1 border border-slate-200">
+                    <button onclick="copiarChavePixLanding()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition">Copiar</button>
+                </div>
+            </div>
+
+            <div class="pt-2 flex flex-col gap-2">
+                <a href="https://wa.me/5521992113903?text=Ol%C3%A1%20Luciano,%20acabei%20de%20realizar%20o%20pagamento%20do%20ConciliaZap%20via%20PIX!" target="_blank" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs text-center transition flex items-center justify-center space-x-1.5">
+                    <i class="fa-brands fa-whatsapp"></i>
+                    <span>Enviar Comprovante no WhatsApp</span>
+                </a>
+                <button onclick="fecharModalPixLanding()" class="w-full py-2 bg-slate-100 text-slate-700 font-semibold rounded-xl text-xs transition">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SCRIPT SIMULADOR NA LANDING PAGE ==================== -->
+    <script>
+        function simularMensagemLanding(texto) {
+            const container = document.getElementById("landingChatMessages");
+            if (!container) return;
+
+            // Bolha do morador
+            const msgMorador = document.createElement("div");
+            msgMorador.className = "chat-bubble-received p-3 max-w-[85%] text-xs";
+            msgMorador.innerHTML = `<p class="font-medium text-slate-800">${escapeHtml(texto)}</p><span class="text-[9px] text-slate-400 block text-right mt-1">Agora</span>`;
+            container.appendChild(msgMorador);
+            container.scrollTop = container.scrollHeight;
+
+            // Resposta do robô
+            setTimeout(() => {
+                const msgBot = document.createElement("div");
+                msgBot.className = "chat-bubble-sent p-3 max-w-[90%] ml-auto text-xs";
+
+                const textoLower = texto.toLowerCase();
+                let resposta = "";
+
+                if (textoLower.includes("barulho") || textoLower.includes("som") || textoLower.includes("402")) {
+                    resposta = `<strong>⚖️ Ocorrência Registrada com Sucesso!</strong><br><br>Recebemos o relato de barulho. Seu nome permanece em <strong>SIGILO ABSOLUTO</strong>.<br><br>O caso foi enviado à moderação do síndico para emissão de notificação formal.`;
+                } else if (textoLower.includes("reserva") || textoLower.includes("churrasqueira") || textoLower.includes("salão")) {
+                    resposta = `<strong>🥩 Reservas de Áreas Comuns:</strong><br><br>Para agendar churrasqueira ou salão de festas, envie a data e o período desejado. Nosso sistema confere a agenda e bloqueia horários conflitantes na hora!`;
+                } else if (textoLower.includes("chave") || textoLower.includes("achou") || textoLower.includes("perdido")) {
+                    resposta = `<strong>📦 Achados & Perdidos da Portaria:</strong><br><br>Temos itens resguardados na portaria com foto cadastrada no sistema. Compareça à portaria com identificação para conferir e retirar!`;
+                } else {
+                    resposta = `<strong>🤖 Portaria Digital ConciliaZap:</strong><br><br>Recebemos sua mensagem! Nossa mediação automática funciona 24 horas por dia para garantir a tranquilidade do condomínio.`;
+                }
+
+                msgBot.innerHTML = `<p>${resposta}</p><span class="text-[9px] text-emerald-800 block text-right mt-1">24/7 ✓✓</span>`;
+                container.appendChild(msgBot);
+                container.scrollTop = container.scrollHeight;
+            }, 600);
+        }
+
+        function enviarMensagemLandingInput() {
+            const input = document.getElementById("landingChatInput");
+            if (!input || !input.value.trim()) return;
+            simularMensagemLanding(input.value.trim());
+            input.value = "";
+        }
+
+        document.getElementById("landingChatInput")?.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") enviarMensagemLandingInput();
+        });
+
+        function abrirModalPixLanding() {
+            document.getElementById("modalPixLanding")?.classList.remove("hidden");
+        }
+
+        function fecharModalPixLanding() {
+            document.getElementById("modalPixLanding")?.classList.add("hidden");
+        }
+
+        function copiarChavePixLanding() {
+            const input = document.getElementById("chavePixInputLanding");
+            if (!input) return;
+            navigator.clipboard.writeText(input.value);
+            alert("✅ Chave PIX copiada: " + input.value);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return "";
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
+
+</body>
+</html>

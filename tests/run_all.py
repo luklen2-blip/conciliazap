@@ -151,11 +151,21 @@ class TestConciliaZapCompleto(unittest.TestCase):
         print(" [PASS] 08. Conformidade legal (LGPD, Código Civil e avisos éticos) auditada")
 
     def test_09_frontend_estatico_e_spa(self):
-        """Garante resolução universal de frontend com fallback SPA."""
+        """Garante resolução universal de frontend com fallback SPA, Landing Page e Painel."""
+        # 1. Landing page oficial na raiz e /landing
         res_home = client.get("/")
         self.assertEqual(res_home.status_code, 200)
         self.assertIn("ConciliaZap", res_home.text)
-        print(" [PASS] 09. Resolução universal de arquivos estáticos e SPA validada")
+
+        res_landing = client.get("/landing")
+        self.assertEqual(res_landing.status_code, 200)
+        self.assertIn("ConciliaZap", res_landing.text)
+
+        # 2. Painel administrativo do síndico em /painel
+        res_painel = client.get("/painel")
+        self.assertEqual(res_painel.status_code, 200)
+        self.assertIn("Moderação do Síndico", res_painel.text)
+        print(" [PASS] 09. Resolução universal de arquivos estáticos, Landing Page e Painel validada")
 
     def test_10_webhook_kiwify(self):
         """Valida o webhook oficial da Kiwify ativando plano do condomínio 24/7."""
